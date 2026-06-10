@@ -5,9 +5,10 @@ const prisma = new PrismaClient();
 
 const demoProviderNames = ["Importadora Norte", "Mayorista Centro"];
 const demoProductNames = ["Body Splash Victoria Trend", "Parlante JBL Go", "Termo Stanley 1.2L"];
+const demoCustomerNames = ["Sofia Alvarez", "Lucas Pereyra", "Martina Lopez"];
 const demoCustomerPhones = ["+5491133333333", "+5491144444444"];
 const demoCommunityWhatsapps = [...demoCustomerPhones, "+5491155555555"];
-const demoCashNote = "Caja inicial simulada para evaluar capital libre y comprometido.";
+const demoCashNotePrefix = "Caja inicial simulada";
 
 async function main() {
   const adminEmail = process.env.SEED_ADMIN_EMAIL ?? "admin@productostendencia.local";
@@ -17,46 +18,65 @@ async function main() {
   }
   const passwordHash = await bcrypt.hash(adminPassword ?? "change-me-local-seed-password", 10);
 
-  await prisma.$transaction([
-    prisma.contentItem.deleteMany({ where: { product: { name: { in: demoProductNames } } } }),
-    prisma.inquiry.deleteMany({
-      where: {
-        OR: [
-          { product: { name: { in: demoProductNames } } },
-          { customer: { phone: { in: demoCustomerPhones } } },
-          { order: { product: { name: { in: demoProductNames } } } },
-        ],
-      },
-    }),
-    prisma.order.deleteMany({
-      where: {
-        OR: [
-          { product: { name: { in: demoProductNames } } },
-          { customer: { phone: { in: demoCustomerPhones } } },
-        ],
-      },
-    }),
-    prisma.providerProduct.deleteMany({
-      where: {
-        OR: [
-          { product: { name: { in: demoProductNames } } },
-          { provider: { name: { in: demoProviderNames } } },
-        ],
-      },
-    }),
-    prisma.communityMember.deleteMany({
-      where: {
-        OR: [
-          { whatsapp: { in: demoCommunityWhatsapps } },
-          { name: "Martina Lopez" },
-        ],
-      },
-    }),
-    prisma.cashSnapshot.deleteMany({ where: { notes: demoCashNote } }),
-    prisma.customer.deleteMany({ where: { phone: { in: demoCustomerPhones } } }),
-    prisma.product.deleteMany({ where: { name: { in: demoProductNames } } }),
-    prisma.provider.deleteMany({ where: { name: { in: demoProviderNames } } }),
-  ]);
+  await prisma.inquiry.deleteMany({
+    where: {
+      OR: [
+        { product: { name: { in: demoProductNames } } },
+        { customer: { OR: [{ name: { in: demoCustomerNames } }, { phone: { in: demoCustomerPhones } }] } },
+        { order: { product: { name: { in: demoProductNames } } } },
+        { order: { customer: { OR: [{ name: { in: demoCustomerNames } }, { phone: { in: demoCustomerPhones } }] } } },
+        { order: { provider: { name: { in: demoProviderNames } } } },
+      ],
+    },
+  });
+
+  await prisma.order.deleteMany({
+    where: {
+      OR: [
+        { product: { name: { in: demoProductNames } } },
+        { customer: { OR: [{ name: { in: demoCustomerNames } }, { phone: { in: demoCustomerPhones } }] } },
+        { provider: { name: { in: demoProviderNames } } },
+      ],
+    },
+  });
+
+  await prisma.cashSnapshot.deleteMany({
+    where: { notes: { contains: demoCashNotePrefix } },
+  });
+
+  await prisma.contentItem.deleteMany({
+    where: { product: { name: { in: demoProductNames } } },
+  });
+
+  await prisma.communityMember.deleteMany({
+    where: {
+      OR: [
+        { name: { in: demoCustomerNames } },
+        { whatsapp: { in: demoCommunityWhatsapps } },
+        { customer: { OR: [{ name: { in: demoCustomerNames } }, { phone: { in: demoCustomerPhones } }] } },
+      ],
+    },
+  });
+
+  await prisma.providerProduct.deleteMany({
+    where: {
+      OR: [
+        { product: { name: { in: demoProductNames } } },
+        { provider: { name: { in: demoProviderNames } } },
+      ],
+    },
+  });
+
+  await prisma.product.deleteMany({ where: { name: { in: demoProductNames } } });
+  await prisma.provider.deleteMany({ where: { name: { in: demoProviderNames } } });
+  await prisma.customer.deleteMany({
+    where: {
+      OR: [
+        { name: { in: demoCustomerNames } },
+        { phone: { in: demoCustomerPhones } },
+      ],
+    },
+  });
 
   await prisma.user.upsert({
     where: { email: adminEmail },
