@@ -81,7 +81,7 @@ Crear un servicio desde el repo y configurar:
 - Build command:
 
 ```bash
-npm install && npm run db:generate && npm run build -w apps/api
+npm install && npm run build -w apps/api
 ```
 
 - Start command:
@@ -120,7 +120,7 @@ Crear un Web Service desde el repo y configurar:
 - Build command:
 
 ```bash
-npm install && npm run db:generate && npm run build -w apps/api
+npm install && npm run build -w apps/api
 ```
 
 - Start command:

@@ -96,7 +96,7 @@ Opcion recomendada: Railway.
 Build command:
 
 ```bash
-npm install && npm run db:generate && npm run build -w apps/api
+npm install && npm run build -w apps/api
 ```
 
 Start command:
