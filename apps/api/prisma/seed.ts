@@ -3,6 +3,12 @@ import * as bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
+const demoProviderNames = ["Importadora Norte", "Mayorista Centro"];
+const demoProductNames = ["Body Splash Victoria Trend", "Parlante JBL Go", "Termo Stanley 1.2L"];
+const demoCustomerPhones = ["+5491133333333", "+5491144444444"];
+const demoCommunityWhatsapps = [...demoCustomerPhones, "+5491155555555"];
+const demoCashNote = "Caja inicial simulada para evaluar capital libre y comprometido.";
+
 async function main() {
   const adminEmail = process.env.SEED_ADMIN_EMAIL ?? "admin@productostendencia.local";
   const adminPassword = process.env.SEED_ADMIN_PASSWORD;
@@ -10,6 +16,47 @@ async function main() {
     throw new Error("SEED_ADMIN_PASSWORD is required to seed production");
   }
   const passwordHash = await bcrypt.hash(adminPassword ?? "change-me-local-seed-password", 10);
+
+  await prisma.$transaction([
+    prisma.contentItem.deleteMany({ where: { product: { name: { in: demoProductNames } } } }),
+    prisma.inquiry.deleteMany({
+      where: {
+        OR: [
+          { product: { name: { in: demoProductNames } } },
+          { customer: { phone: { in: demoCustomerPhones } } },
+          { order: { product: { name: { in: demoProductNames } } } },
+        ],
+      },
+    }),
+    prisma.order.deleteMany({
+      where: {
+        OR: [
+          { product: { name: { in: demoProductNames } } },
+          { customer: { phone: { in: demoCustomerPhones } } },
+        ],
+      },
+    }),
+    prisma.providerProduct.deleteMany({
+      where: {
+        OR: [
+          { product: { name: { in: demoProductNames } } },
+          { provider: { name: { in: demoProviderNames } } },
+        ],
+      },
+    }),
+    prisma.communityMember.deleteMany({
+      where: {
+        OR: [
+          { whatsapp: { in: demoCommunityWhatsapps } },
+          { name: "Martina Lopez" },
+        ],
+      },
+    }),
+    prisma.cashSnapshot.deleteMany({ where: { notes: demoCashNote } }),
+    prisma.customer.deleteMany({ where: { phone: { in: demoCustomerPhones } } }),
+    prisma.product.deleteMany({ where: { name: { in: demoProductNames } } }),
+    prisma.provider.deleteMany({ where: { name: { in: demoProviderNames } } }),
+  ]);
 
   await prisma.user.upsert({
     where: { email: adminEmail },

@@ -2,6 +2,7 @@
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 const TOKEN_KEY = "productos_tendencia_token";
+export const SESSION_EVENT = "productos-tendencia-session";
 
 function getApiUrl() {
   if (!API_URL) {
@@ -12,17 +13,28 @@ function getApiUrl() {
 
 export function getToken() {
   if (typeof window === "undefined") return null;
-  return window.localStorage.getItem(TOKEN_KEY);
+  const localToken = window.localStorage.getItem(TOKEN_KEY);
+  if (localToken) return localToken;
+  return document.cookie
+    .split("; ")
+    .find((row) => row.startsWith(`${TOKEN_KEY}=`))
+    ?.split("=")[1] ?? null;
+}
+
+function notifySessionChange() {
+  window.dispatchEvent(new Event(SESSION_EVENT));
 }
 
 export function setToken(token: string) {
   window.localStorage.setItem(TOKEN_KEY, token);
   document.cookie = `${TOKEN_KEY}=${token}; path=/; max-age=28800; SameSite=Lax`;
+  notifySessionChange();
 }
 
 export function clearToken() {
   window.localStorage.removeItem(TOKEN_KEY);
   document.cookie = `${TOKEN_KEY}=; path=/; max-age=0; SameSite=Lax`;
+  notifySessionChange();
 }
 
 export async function login(email: string, password: string) {
@@ -66,13 +78,18 @@ export async function clientApi<T>(path: string, init: RequestInit = {}): Promis
 export async function getClientApiStatus() {
   try {
     if (!API_URL) return "preview";
-    const health = await fetch(`${API_URL}/health`);
-    if (!health.ok || !getToken()) {
+    const health = await fetch(`${API_URL}/health`, { cache: "no-store" });
+    const token = getToken();
+    if (!health.ok || !token) {
       return "preview";
     }
 
-    await clientApi("/dashboard");
-    return "connected";
+    const headers = { Authorization: `Bearer ${token}` };
+    const me = await fetch(`${API_URL}/auth/me`, { headers, cache: "no-store" });
+    if (me.ok) return "connected";
+
+    const dashboard = await fetch(`${API_URL}/dashboard`, { headers, cache: "no-store" });
+    return dashboard.ok ? "connected" : "preview";
   } catch {
     return "preview";
   }

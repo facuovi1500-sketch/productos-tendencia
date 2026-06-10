@@ -2,15 +2,35 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { clearToken, getClientApiStatus, getToken } from "@/lib/client-api";
+import { clearToken, getClientApiStatus, getToken, SESSION_EVENT } from "@/lib/client-api";
 
 export function ApiStatusBanner() {
   const [status, setStatus] = useState<"checking" | "connected" | "preview">("checking");
   const [hasToken, setHasToken] = useState(false);
 
   useEffect(() => {
-    setHasToken(Boolean(getToken()));
-    getClientApiStatus().then(setStatus);
+    let isMounted = true;
+
+    async function refreshStatus() {
+      setHasToken(Boolean(getToken()));
+      setStatus("checking");
+      const nextStatus = await getClientApiStatus();
+      if (!isMounted) return;
+      setStatus(nextStatus);
+      setHasToken(Boolean(getToken()));
+    }
+
+    refreshStatus();
+    window.addEventListener(SESSION_EVENT, refreshStatus);
+    window.addEventListener("storage", refreshStatus);
+    window.addEventListener("focus", refreshStatus);
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener(SESSION_EVENT, refreshStatus);
+      window.removeEventListener("storage", refreshStatus);
+      window.removeEventListener("focus", refreshStatus);
+    };
   }, []);
 
   if (status === "connected") {

@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { BarChart3, Boxes, CalendarDays, LayoutDashboard, MessageSquareText, PackageSearch, ShoppingCart, Store, Users, UserRoundCheck, type LucideIcon } from "lucide-react";
-import { getToken } from "@/lib/client-api";
 import { useEffect, useState } from "react";
+import { getClientApiStatus, SESSION_EVENT } from "@/lib/client-api";
 import { cn } from "@/lib/utils";
 
 const groups = [
@@ -40,11 +40,30 @@ const groups = [
 const mobileItems = groups.flatMap((group) => group.items);
 
 export function SideNav() {
-  const [hasToken, setHasToken] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const pathname = usePathname();
 
   useEffect(() => {
-    setHasToken(Boolean(getToken()));
+    let isMounted = true;
+
+    async function refreshSession() {
+      const status = await getClientApiStatus();
+      if (isMounted) {
+        setIsAuthenticated(status === "connected");
+      }
+    }
+
+    refreshSession();
+    window.addEventListener(SESSION_EVENT, refreshSession);
+    window.addEventListener("storage", refreshSession);
+    window.addEventListener("focus", refreshSession);
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener(SESSION_EVENT, refreshSession);
+      window.removeEventListener("storage", refreshSession);
+      window.removeEventListener("focus", refreshSession);
+    };
   }, []);
 
   return (
@@ -65,7 +84,7 @@ export function SideNav() {
           </div>
         </div>
         <nav className="space-y-5">
-          {!hasToken ? <NavLink href="/login" icon={UserRoundCheck} isActive={pathname === "/login"} label="Iniciar sesión" /> : null}
+          {!isAuthenticated ? <NavLink href="/login" icon={UserRoundCheck} isActive={pathname === "/login"} label="Iniciar sesión" /> : null}
 
           {groups.map((group) => (
             <div key={group.label}>
@@ -86,7 +105,7 @@ export function SideNav() {
           <span className="font-semibold text-slate-950">Productos Tendencia</span>
         </div>
         <nav className="flex gap-2 overflow-x-auto pb-1">
-          {!hasToken ? <MobileLink href="/login" isActive={pathname === "/login"} label="Login" /> : null}
+          {!isAuthenticated ? <MobileLink href="/login" isActive={pathname === "/login"} label="Login" /> : null}
           {mobileItems.map((item) => (
             <MobileLink href={item.href} isActive={pathname === item.href} key={item.href} label={item.label} />
           ))}
