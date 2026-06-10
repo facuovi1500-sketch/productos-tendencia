@@ -1,0 +1,244 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  SOCIO
+  OPERADOR
+}
+
+enum ProviderStatus {
+  ACTIVO
+  PRUEBA
+  DESCARTADO
+}
+
+enum ProductStatus {
+  ACTIVO
+  PAUSADO
+  AGOTADO
+  DESCARTADO
+}
+
+enum ProductMode {
+  STOCK
+  ENCARGO
+}
+
+enum OrderStatus {
+  CONSULTA
+  SENADO
+  COMPRADO_PROVEEDOR
+  EN_TRANSITO
+  ENTREGADO
+  CANCELADO
+}
+
+enum InquiryStatus {
+  ABIERTA
+  RESERVA_SIN_SENA
+  RESERVA_CON_SENA
+  CONVERTIDA_PEDIDO
+  PERDIDA
+}
+
+enum InquirySource {
+  WHATSAPP
+  INSTAGRAM
+  TIKTOK
+  REFERIDO
+  OTRO
+}
+
+enum Platform {
+  INSTAGRAM
+  TIKTOK
+  WHATSAPP
+  FACEBOOK
+  OTRO
+}
+
+enum ContentType {
+  REEL
+  HISTORIA
+  POST
+}
+
+enum ContentStatus {
+  PLANIFICADO
+  PUBLICADO
+  CANCELADO
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(OPERADOR)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Provider {
+  id           String         @id @default(cuid())
+  name         String
+  whatsapp     String
+  city         String
+  leadTimeDays Int
+  quality      Int
+  status       ProviderStatus @default(PRUEBA)
+  notes        String?
+  products     ProviderProduct[]
+  orders       Order[]
+  mainProducts Product[]      @relation("MainProvider")
+  alternateProducts Product[] @relation("AlternateProvider")
+  onTimeDeliveries Int        @default(0)
+  lateDeliveries   Int        @default(0)
+  failedDeliveries Int        @default(0)
+  claimsCount      Int        @default(0)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+}
+
+model Product {
+  id                    String         @id @default(cuid())
+  name                  String
+  category              String
+  mainProviderId         String?
+  alternateProviderId    String?
+  cost                  Decimal        @db.Decimal(12, 2)
+  retailPrice           Decimal        @db.Decimal(12, 2)
+  wholesalePrice        Decimal        @db.Decimal(12, 2)
+  stock                 Int            @default(0)
+  mode                  ProductMode    @default(ENCARGO)
+  photos                String[]       @default([])
+  videos                String[]       @default([])
+  status                ProductStatus  @default(ACTIVO)
+  inquiries             Int            @default(0)
+  doNotReorder          Boolean        @default(false)
+  reorderBlockReason    String?
+  providerOffers        ProviderProduct[]
+  orders                Order[]
+  inquiryEvents         Inquiry[]
+  contentItems          ContentItem[]
+  favoritedBy           Customer[]     @relation("FavoriteProducts")
+  mainProvider          Provider?      @relation("MainProvider", fields: [mainProviderId], references: [id])
+  alternateProvider     Provider?      @relation("AlternateProvider", fields: [alternateProviderId], references: [id])
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+}
+
+model ProviderProduct {
+  id          String   @id @default(cuid())
+  providerId  String
+  productId   String
+  purchasePrice Decimal @db.Decimal(12, 2)
+  moq         Int
+  notes       String?
+  provider    Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([providerId, productId])
+}
+
+model Customer {
+  id               String      @id @default(cuid())
+  name             String
+  phone            String
+  city             String
+  joinedAt         DateTime    @default(now())
+  favoriteProducts Product[]   @relation("FavoriteProducts")
+  orders           Order[]
+  inquiries        Inquiry[]
+  communityMember  CommunityMember?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+}
+
+model CommunityMember {
+  id          String    @id @default(cuid())
+  name        String
+  whatsapp    String
+  city        String
+  joinedAt    DateTime  @default(now())
+  hasPurchased Boolean  @default(false)
+  totalSpent  Decimal   @default(0) @db.Decimal(12, 2)
+  customerId  String?   @unique
+  customer    Customer? @relation(fields: [customerId], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  customerId      String
+  productId       String
+  providerId      String?
+  quantity        Int
+  amount          Decimal     @db.Decimal(12, 2)
+  deposit         Decimal     @default(0) @db.Decimal(12, 2)
+  amountPaid      Decimal     @default(0) @db.Decimal(12, 2)
+  supplierCost    Decimal     @default(0) @db.Decimal(12, 2)
+  pendingBalance  Decimal     @default(0) @db.Decimal(12, 2)
+  estimatedProfit Decimal     @default(0) @db.Decimal(12, 2)
+  realizedProfit  Decimal     @default(0) @db.Decimal(12, 2)
+  date            DateTime    @default(now())
+  providerOrderedAt DateTime?
+  receivedAt      DateTime?
+  deliveredAt     DateTime?
+  riskNote        String?
+  status          OrderStatus @default(CONSULTA)
+  customer        Customer    @relation(fields: [customerId], references: [id])
+  product         Product     @relation(fields: [productId], references: [id])
+  provider        Provider?   @relation(fields: [providerId], references: [id])
+  inquiry         Inquiry?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+}
+
+model Inquiry {
+  id          String        @id @default(cuid())
+  customerId  String?
+  productId   String
+  orderId     String?       @unique
+  source      InquirySource @default(WHATSAPP)
+  status      InquiryStatus @default(ABIERTA)
+  note        String?
+  date        DateTime      @default(now())
+  customer    Customer?     @relation(fields: [customerId], references: [id])
+  product     Product       @relation(fields: [productId], references: [id])
+  order       Order?        @relation(fields: [orderId], references: [id])
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model CashSnapshot {
+  id                 String   @id @default(cuid())
+  date               DateTime @default(now())
+  cashAvailable      Decimal  @db.Decimal(12, 2)
+  cashInTransit      Decimal  @default(0) @db.Decimal(12, 2)
+  notes              String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model ContentItem {
+  id          String        @id @default(cuid())
+  date        DateTime
+  productId   String
+  platform    Platform
+  type        ContentType
+  status      ContentStatus @default(PLANIFICADO)
+  product     Product       @relation(fields: [productId], references: [id])
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
