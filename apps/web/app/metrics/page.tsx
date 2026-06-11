@@ -37,15 +37,15 @@ export default async function MetricsPage() {
     <>
       <PageHeader
         title="Métricas"
-        description="Lectura operativa de productos entregados, consultas, conversión, ganancia cobrada y proveedor más rentable."
+        description="Lectura simple de productos entregados, consultas, conversión, ganancia cobrada y proveedor más rentable."
       />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <StatCard label="Ganancia cobrada acumulada" value={money(data.accumulatedRealizedProfit)} icon={<CircleDollarSign className="h-4 w-4" />} tone="green" />
-        <StatCard label="Ganancia teórica acumulada" value={money(data.accumulatedProfit)} helper="No es caja real" icon={<TrendingUp className="h-4 w-4" />} tone="amber" />
+        <StatCard label="Ganancia cobrada" value={money(data.accumulatedRealizedProfit)} helper="Plata ganada efectivamente." icon={<CircleDollarSign className="h-4 w-4" />} tone="green" />
+        <StatCard label="Ganancia teórica (no es caja real)" value={money(data.accumulatedProfit)} helper="Sirve para estimar, no para comprar." icon={<TrendingUp className="h-4 w-4" />} tone="amber" />
         <StatCard
           label="Proveedor más rentable"
           value={data.mostProfitableProvider?.providerName ?? "Sin datos"}
-          helper={money(data.mostProfitableProvider?.margin ?? 0)}
+          helper={`Margen: ${money(data.mostProfitableProvider?.margin ?? 0)}`}
           icon={<Store className="h-4 w-4" />}
           tone="blue"
         />
@@ -62,6 +62,7 @@ export default async function MetricsPage() {
         />
         <Card>
           <CardTitle>Ganancia cobrada mensual</CardTitle>
+          <p className="mt-2 text-sm text-slate-600">Solo cuenta ganancia efectivamente cobrada.</p>
           <div className="mt-4 space-y-3">
             {data.monthlyRealizedProfit.map((month) => (
               <div className="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50 px-3 py-2" key={month.month}>

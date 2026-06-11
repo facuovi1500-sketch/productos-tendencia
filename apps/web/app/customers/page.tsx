@@ -18,7 +18,7 @@ export default async function CustomersPage() {
     <>
       <PageHeader
         title="Clientes"
-        description="Alta rápida de clientes para usarlos en consultas y pedidos. Mantiene el historial de compras y el monto gastado."
+        description="Alta rápida para usar clientes en consultas y pedidos. Cargá nombre, teléfono/WhatsApp y ciudad sin convertir esto en CRM avanzado."
       />
       <CustomerForm customers={rows} />
       <DataTable<CustomerRow>
@@ -27,7 +27,7 @@ export default async function CustomersPage() {
           { key: "name", label: "Nombre" },
           { key: "phone", label: "Teléfono / WhatsApp" },
           { key: "city", label: "Ciudad" },
-          { key: "orders", label: "Compras", render: (row) => row.orders.length },
+          { key: "orders", label: "Compras" , render: (row) => row.orders.length },
           {
             key: "spent",
             label: "Monto gastado",

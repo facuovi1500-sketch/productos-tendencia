@@ -22,12 +22,12 @@ export function CashSnapshotForm() {
           notes: notes.trim() || undefined,
         }),
       });
-      setMessage("Snapshot de caja cargado.");
+      setMessage("Caja actualizada.");
       setCashAvailable("");
       setNotes("");
       window.location.reload();
     } catch {
-      setMessage("No se pudo cargar caja. Revisar sesión y API.");
+      setMessage("No se pudo actualizar caja. Revisá sesión y API.");
     } finally {
       setIsSaving(false);
     }
@@ -41,6 +41,7 @@ export function CashSnapshotForm() {
           <input
             className="mt-1 w-full rounded-md border border-border px-3 py-2"
             min="0"
+            placeholder="Plata real disponible"
             required
             type="number"
             value={cashAvailable}
@@ -57,10 +58,10 @@ export function CashSnapshotForm() {
           />
         </label>
         <button className="self-end rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:opacity-60" disabled={isSaving}>
-          {isSaving ? "Guardando..." : "Cargar caja"}
+          {isSaving ? "Guardando..." : "Actualizar caja"}
         </button>
       </div>
-      <p className="mt-2 text-xs text-slate-500">La caja se carga manualmente. No se calcula desde ganancia teórica.</p>
+      <p className="mt-2 text-xs text-slate-500">Caja disponible = plata real hoy. No se calcula desde ganancia teórica.</p>
       {message ? <p className="mt-2 text-sm text-slate-600">{message}</p> : null}
     </form>
   );

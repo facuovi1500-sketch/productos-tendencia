@@ -36,10 +36,10 @@ function CreateCustomerForm() {
         method: "POST",
         body: JSON.stringify({ name: name.trim(), phone: phone.trim(), city: city.trim() }),
       });
-      setMessage("Cliente creado.");
+      setMessage("Cliente guardado.");
       window.location.reload();
     } catch {
-      setMessage("No se pudo crear el cliente.");
+      setMessage("No se pudo guardar el cliente.");
     } finally {
       setIsSaving(false);
     }
@@ -47,15 +47,15 @@ function CreateCustomerForm() {
 
   return (
     <form className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-slate-100/70" onSubmit={submit}>
-      <h2 className="text-sm font-semibold text-slate-700">Crear cliente</h2>
-      <p className="mt-1 text-xs text-slate-500">Queda disponible para consultas y pedidos al guardar.</p>
+      <h2 className="text-sm font-semibold text-slate-700">Nuevo cliente</h2>
+      <p className="mt-1 text-xs text-slate-500">Alta rápida: queda disponible en los selectores de consultas y pedidos.</p>
       <div className="mt-3 grid gap-3 md:grid-cols-3">
-        <TextInput label="Nombre" value={name} onChange={setName} />
-        <TextInput label="Teléfono / WhatsApp" value={phone} onChange={setPhone} />
-        <TextInput label="Ciudad" value={city} onChange={setCity} />
+        <TextInput label="Nombre" value={name} onChange={setName} placeholder="Ej: Sofía Álvarez" />
+        <TextInput label="Teléfono / WhatsApp" value={phone} onChange={setPhone} placeholder="+54 9 ..." />
+        <TextInput label="Ciudad" value={city} onChange={setCity} placeholder="Ej: Buenos Aires" />
       </div>
       <button className="mt-4 rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:opacity-60" disabled={isSaving || !name.trim() || !phone.trim() || !city.trim()}>
-        {isSaving ? "Guardando..." : "Crear cliente"}
+        {isSaving ? "Guardando..." : "Guardar cliente"}
       </button>
       {message ? <p className="mt-2 text-sm text-slate-600">{message}</p> : null}
     </form>
@@ -89,10 +89,10 @@ function EditCustomerForm({ customers }: { customers: CustomerItem[] }) {
         method: "PATCH",
         body: JSON.stringify({ name: name.trim(), phone: phone.trim(), city: city.trim() }),
       });
-      setMessage("Cliente actualizado.");
+      setMessage("Cambios guardados.");
       window.location.reload();
     } catch {
-      setMessage("No se pudo actualizar el cliente.");
+      setMessage("No se pudieron guardar los cambios.");
     } finally {
       setIsSaving(false);
     }
@@ -101,7 +101,7 @@ function EditCustomerForm({ customers }: { customers: CustomerItem[] }) {
   return (
     <form className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-slate-100/70" onSubmit={submit}>
       <h2 className="text-sm font-semibold text-slate-700">Editar cliente</h2>
-      <p className="mt-1 text-xs text-slate-500">Actualizá datos básicos sin convertirlo en CRM avanzado.</p>
+      <p className="mt-1 text-xs text-slate-500">Actualizá datos básicos para evitar errores al cargar pedidos.</p>
       <div className="mt-3 grid gap-3 md:grid-cols-2">
         <label className="text-sm font-medium">
           Cliente
@@ -125,11 +125,11 @@ function EditCustomerForm({ customers }: { customers: CustomerItem[] }) {
   );
 }
 
-function TextInput({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+function TextInput({ label, value, placeholder, onChange }: { label: string; value: string; placeholder?: string; onChange: (value: string) => void }) {
   return (
     <label className="text-sm font-medium">
       {label}
-      <input className="mt-1 w-full rounded-md border border-border px-3 py-2" required value={value} onChange={(event) => onChange(event.target.value)} />
+      <input className="mt-1 w-full rounded-md border border-border px-3 py-2" placeholder={placeholder} required value={value} onChange={(event) => onChange(event.target.value)} />
     </label>
   );
 }

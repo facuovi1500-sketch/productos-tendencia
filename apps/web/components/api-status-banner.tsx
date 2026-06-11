@@ -35,10 +35,10 @@ export function ApiStatusBanner() {
 
   if (status === "connected") {
     return (
-      <div className="flex items-center justify-between border-b border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-900">
-        <span>API conectada: datos reales de la base configurada.</span>
+      <div className="flex items-center justify-between gap-3 border-b border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-900">
+        <span>Datos reales conectados a la base online.</span>
         <button
-          className="font-medium underline"
+          className="shrink-0 font-medium underline"
           onClick={() => {
             clearToken();
             window.location.reload();
@@ -52,13 +52,9 @@ export function ApiStatusBanner() {
   }
 
   return (
-    <div className="flex items-center justify-between border-b border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900">
-      <span>
-        {hasToken
-          ? "Verificación operativa: la API protegida no responde con el token actual; la interfaz está en preview sin datos reales."
-          : "Verificación operativa: no hay sesión iniciada; la interfaz está en preview sin datos reales."}
-      </span>
-      <Link className="font-medium underline" href="/login">
+    <div className="flex items-center justify-between gap-3 border-b border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900">
+      <span>{hasToken ? "Sin conexión con la API. No uses estos datos para decidir compras." : "Iniciá sesión para ver y cargar datos reales."}</span>
+      <Link className="shrink-0 font-medium underline" href="/login">
         Iniciar sesión
       </Link>
     </div>

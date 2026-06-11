@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { clientApi } from "@/lib/client-api";
+import { statusLabel } from "@/lib/labels";
 
 const inquiryStatuses = ["ABIERTA", "PERDIDA", "RESERVA_SIN_SENA", "RESERVA_CON_SENA", "CONVERTIDA_PEDIDO"];
 const inquirySources = ["WHATSAPP", "INSTAGRAM", "TIKTOK", "REFERIDO", "OTRO"];
@@ -104,10 +105,10 @@ export function InquiryForm({
           orderId: linkedOrderId,
         }),
       });
-      setMessage("Consulta cargada.");
+      setMessage("Consulta guardada.");
       window.location.reload();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "No se pudo cargar la consulta.");
+      setMessage(error instanceof Error ? error.message : "No se pudo guardar la consulta.");
     } finally {
       setIsSaving(false);
     }
@@ -141,10 +142,10 @@ export function InquiryForm({
           orderId: linkedOrderId,
         }),
       });
-      setMessage("Consulta actualizada.");
+      setMessage("Cambio guardado.");
       window.location.reload();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "No se pudo actualizar la consulta.");
+      setMessage(error instanceof Error ? error.message : "No se pudo guardar el cambio.");
     } finally {
       setIsSaving(false);
     }
@@ -153,67 +154,72 @@ export function InquiryForm({
   return (
     <div className="mb-6 grid gap-4 xl:grid-cols-2">
       <form className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-slate-100/70" onSubmit={submitCreate}>
-        <h2 className="text-sm font-semibold text-slate-700">Cargar consulta</h2>
-        <p className="mt-1 text-xs text-slate-500">Registrá cada consulta para medir demanda real antes de comprar.</p>
+        <h2 className="text-sm font-semibold text-slate-700">Nueva consulta</h2>
+        <p className="mt-1 text-xs text-slate-500">Cargá cada consulta. Solo las reservas con seña o pedidos convierten en demanda validada.</p>
         <div className="mt-3 grid gap-3 md:grid-cols-2">
           <Select label="Producto" value={productId} onChange={setProductId} options={products} />
           <Select label="Cliente opcional" value={customerId} onChange={setCustomerId} options={customers} emptyLabel="Sin cliente" />
           <EnumSelect label="Origen" value={source} values={inquirySources} onChange={setSource} />
           <EnumSelect label="Estado" value={status} values={inquiryStatuses} onChange={setStatus} />
-          <label className="md:col-span-2 text-sm font-medium">
-            Nota / motivo
-            <input className="mt-1 w-full rounded-md border border-border px-3 py-2" required={status === "PERDIDA"} value={note} onChange={(event) => setNote(event.target.value)} />
+          <label className="text-sm font-medium md:col-span-2">
+            {status === "PERDIDA" ? "Motivo de pérdida" : "Nota"}
+            <input
+              className="mt-1 w-full rounded-md border border-border px-3 py-2"
+              placeholder={status === "PERDIDA" ? "Ej: precio alto, no respondió, compró en otro lado" : "Dato útil para seguimiento"}
+              required={status === "PERDIDA"}
+              value={note}
+              onChange={(event) => setNote(event.target.value)}
+            />
           </label>
           {status === "RESERVA_CON_SENA" ? (
             <>
-              <Select label="Pedido asociado" value={orderId} onChange={setOrderId} options={orders.map((order) => ({ id: order.id, name: `${order.status} - ${order.customer?.name ?? "Cliente"} - ${order.product?.name ?? "Producto"}` }))} emptyLabel="Crear desde seña" />
-              <label className="text-sm font-medium">
-                Monto total
-                <input className="mt-1 w-full rounded-md border border-border px-3 py-2" min="0" type="number" value={amount} onChange={(event) => setAmount(event.target.value)} />
-              </label>
-              <label className="text-sm font-medium">
-                Seña cobrada
-                <input className="mt-1 w-full rounded-md border border-border px-3 py-2" min="0" type="number" value={deposit} onChange={(event) => setDeposit(event.target.value)} />
-              </label>
+              <Select label="Pedido asociado" value={orderId} onChange={setOrderId} options={orders.map(orderOption)} emptyLabel="Crear pedido desde la seña" />
+              <NumberInput label="Monto total" value={amount} onChange={setAmount} />
+              <NumberInput label="Seña cobrada" value={deposit} onChange={setDeposit} />
+              <p className="text-xs text-slate-500 md:col-span-2">Si cargás seña sin pedido asociado, se crea un pedido SEÑADO con costo real en cero.</p>
             </>
           ) : null}
         </div>
         <button className="mt-4 rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:opacity-60" disabled={isSaving || !productId}>
-          {isSaving ? "Guardando..." : "Crear consulta"}
+          {isSaving ? "Guardando..." : "Guardar consulta"}
         </button>
       </form>
 
       <form className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-slate-100/70" onSubmit={submitEdit}>
-        <h2 className="text-sm font-semibold text-slate-700">Editar estado de consulta</h2>
+        <h2 className="text-sm font-semibold text-slate-700">Cambiar estado de consulta</h2>
         <p className="mt-1 text-xs text-slate-500">Marcá pérdida, reserva o conversión para separar interés de demanda validada.</p>
         <div className="mt-3 grid gap-3 md:grid-cols-2">
-          <Select label="Consulta" value={editInquiryId} onChange={selectEditInquiry} options={inquiries.map((inquiry) => ({ id: inquiry.id, name: `${inquiry.product?.name ?? "Producto"} - ${inquiry.status}` }))} />
+          <Select label="Consulta" value={editInquiryId} onChange={selectEditInquiry} options={inquiries.map((inquiry) => ({ id: inquiry.id, name: `${inquiry.product?.name ?? "Producto"} - ${statusLabel(inquiry.status)}` }))} />
           <EnumSelect label="Estado" value={editStatus} values={inquiryStatuses} onChange={setEditStatus} />
-          <label className="md:col-span-2 text-sm font-medium">
-            Nota / motivo
-            <input className="mt-1 w-full rounded-md border border-border px-3 py-2" required={editStatus === "PERDIDA"} value={editNote} onChange={(event) => setEditNote(event.target.value)} />
+          <label className="text-sm font-medium md:col-span-2">
+            {editStatus === "PERDIDA" ? "Motivo de pérdida" : "Nota"}
+            <input
+              className="mt-1 w-full rounded-md border border-border px-3 py-2"
+              placeholder={editStatus === "PERDIDA" ? "Explicá por qué se perdió" : "Dato útil para seguimiento"}
+              required={editStatus === "PERDIDA"}
+              value={editNote}
+              onChange={(event) => setEditNote(event.target.value)}
+            />
           </label>
           {editStatus === "RESERVA_CON_SENA" || editStatus === "CONVERTIDA_PEDIDO" ? (
             <>
-              <Select label="Pedido asociado" value={editOrderId} onChange={setEditOrderId} options={orders.map((order) => ({ id: order.id, name: `${order.status} - ${order.customer?.name ?? "Cliente"} - ${order.product?.name ?? "Producto"}` }))} emptyLabel="Sin pedido" />
-              <label className="text-sm font-medium">
-                Monto total
-                <input className="mt-1 w-full rounded-md border border-border px-3 py-2" min="0" type="number" value={editAmount} onChange={(event) => setEditAmount(event.target.value)} />
-              </label>
-              <label className="text-sm font-medium">
-                Seña cobrada
-                <input className="mt-1 w-full rounded-md border border-border px-3 py-2" min="0" type="number" value={editDeposit} onChange={(event) => setEditDeposit(event.target.value)} />
-              </label>
+              <Select label="Pedido asociado" value={editOrderId} onChange={setEditOrderId} options={orders.map(orderOption)} emptyLabel="Sin pedido" />
+              <NumberInput label="Monto total" value={editAmount} onChange={setEditAmount} />
+              <NumberInput label="Seña cobrada" value={editDeposit} onChange={setEditDeposit} />
             </>
           ) : null}
         </div>
         <button className="mt-4 rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:opacity-60" disabled={isSaving || !editInquiryId}>
-          {isSaving ? "Guardando..." : "Actualizar consulta"}
+          {isSaving ? "Guardando..." : "Guardar cambio"}
         </button>
         {message ? <p className="mt-2 text-sm text-slate-600">{message}</p> : null}
       </form>
     </div>
   );
+}
+
+function orderOption(order: OrderOption) {
+  return { id: order.id, name: `${statusLabel(order.status)} - ${order.customer?.name ?? "Cliente"} - ${order.product?.name ?? "Producto"}` };
 }
 
 function Select({
@@ -251,10 +257,19 @@ function EnumSelect({ label, value, values, onChange }: { label: string; value: 
       <select className="mt-1 w-full rounded-md border border-border px-3 py-2" value={value} onChange={(event) => onChange(event.target.value)}>
         {values.map((item) => (
           <option key={item} value={item}>
-            {item}
+            {statusLabel(item)}
           </option>
         ))}
       </select>
+    </label>
+  );
+}
+
+function NumberInput({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+  return (
+    <label className="text-sm font-medium">
+      {label}
+      <input className="mt-1 w-full rounded-md border border-border px-3 py-2" min="0" type="number" value={value} onChange={(event) => onChange(event.target.value)} />
     </label>
   );
 }

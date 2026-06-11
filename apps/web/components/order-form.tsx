@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { clientApi } from "@/lib/client-api";
+import { statusLabel } from "@/lib/labels";
 import { money } from "@/lib/utils";
 
 const orderStatuses = ["CONSULTA", "SENADO", "COMPRADO_PROVEEDOR", "EN_TRANSITO", "ENTREGADO", "CANCELADO"];
@@ -39,7 +40,7 @@ export function OrderForm({
   return (
     <div className="mb-6 grid gap-4 xl:grid-cols-2">
       <CreateOrderForm products={products} customers={customers} providers={providers} />
-      <EditOrderForm orders={orders} products={products} customers={customers} providers={providers} />
+      <EditOrderForm orders={orders} providers={providers} />
     </div>
   );
 }
@@ -57,7 +58,8 @@ function CreateOrderForm({ products, customers, providers }: { products: Option[
   const [riskNote, setRiskNote] = useState("");
   const [message, setMessage] = useState("");
   const [isSaving, setIsSaving] = useState(false);
-  const financials = getFinancials(amount, amountPaid, status === "CONSULTA" ? "0" : supplierCost);
+  const isInquiry = status === "CONSULTA";
+  const financials = getFinancials(amount, amountPaid, isInquiry ? "0" : supplierCost);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -76,14 +78,14 @@ function CreateOrderForm({ products, customers, providers }: { products: Option[
           amount: Number(amount || 0),
           deposit: Number(deposit || 0),
           amountPaid: Number(amountPaid || deposit || 0),
-          supplierCost: status === "CONSULTA" ? 0 : Number(supplierCost || 0),
+          supplierCost: isInquiry ? 0 : Number(supplierCost || 0),
           riskNote: riskNote.trim() || undefined,
         }),
       });
-      setMessage("Pedido creado.");
+      setMessage("Pedido guardado.");
       window.location.reload();
     } catch {
-      setMessage("No se pudo crear el pedido.");
+      setMessage("No se pudo guardar el pedido.");
     } finally {
       setIsSaving(false);
     }
@@ -91,33 +93,35 @@ function CreateOrderForm({ products, customers, providers }: { products: Option[
 
   return (
     <form className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-slate-100/70" onSubmit={submit}>
-      <h2 className="text-sm font-semibold text-slate-700">Crear pedido</h2>
-      <p className="mt-1 text-xs text-slate-500">Usá CONSULTA sin costo real. El costo se carga cuando hay compra o proveedor confirmado.</p>
+      <h2 className="text-sm font-semibold text-slate-700">Nuevo pedido</h2>
+      <p className="mt-1 text-xs text-slate-500">Usá CONSULTA cuando todavía no compraste al proveedor. En CONSULTA el costo real queda en cero.</p>
       <div className="mt-3 grid gap-3 md:grid-cols-2">
         <Select label="Cliente" value={customerId} options={customers} onChange={setCustomerId} />
         <Select label="Producto" value={productId} options={products} onChange={setProductId} />
         <Select label="Proveedor" value={providerId} options={providers} emptyLabel="Sin proveedor" onChange={setProviderId} />
         <EnumSelect label="Estado" value={status} values={orderStatuses} onChange={setStatus} />
         <NumberInput label="Cantidad" value={quantity} onChange={setQuantity} />
-        <NumberInput label="Monto venta" value={amount} onChange={setAmount} />
-        <NumberInput label="Seña" value={deposit} onChange={setDeposit} />
-        <NumberInput label="Cobrado" value={amountPaid} onChange={setAmountPaid} />
-        <NumberInput label="Costo real" value={status === "CONSULTA" ? "0" : supplierCost} disabled={status === "CONSULTA"} onChange={setSupplierCost} />
+        <NumberInput label="Venta total" value={amount} onChange={setAmount} />
+        <NumberInput label="Seña cobrada" value={deposit} onChange={setDeposit} />
+        <NumberInput label="Dinero cobrado" value={amountPaid} onChange={setAmountPaid} />
+        <NumberInput label="Costo real proveedor" value={isInquiry ? "0" : supplierCost} disabled={isInquiry} onChange={setSupplierCost} />
         <label className="text-sm font-medium">
-          Riesgo
-          <input className="mt-1 w-full rounded-md border border-border px-3 py-2" value={riskNote} onChange={(event) => setRiskNote(event.target.value)} />
+          Nota de riesgo
+          <input className="mt-1 w-full rounded-md border border-border px-3 py-2" placeholder="Ej: demora, falta proveedor, saldo alto" value={riskNote} onChange={(event) => setRiskNote(event.target.value)} />
         </label>
       </div>
+      {status === "SENADO" ? <p className="mt-2 text-xs text-slate-500">Pedido SEÑADO: ya hay seña, pero falta cobrar saldo antes de cerrar ganancia.</p> : null}
+      {isInquiry ? <p className="mt-2 text-xs text-slate-500">CONSULTA no compromete plata: no cargues costo proveedor hasta confirmar compra.</p> : null}
       <FinancialPreview estimated={financials.estimated} realized={financials.realized} pending={financials.pending} />
       <button className="mt-4 rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:opacity-60" disabled={isSaving || !productId || !customerId}>
-        {isSaving ? "Guardando..." : "Crear pedido"}
+        {isSaving ? "Guardando..." : "Guardar pedido"}
       </button>
       {message ? <p className="mt-2 text-sm text-slate-600">{message}</p> : null}
     </form>
   );
 }
 
-function EditOrderForm({ orders, providers }: { orders: OrderItem[]; products: Option[]; customers: Option[]; providers: Option[] }) {
+function EditOrderForm({ orders, providers }: { orders: OrderItem[]; providers: Option[] }) {
   const [orderId, setOrderId] = useState(orders[0]?.id ?? "");
   const selected = orders.find((order) => order.id === orderId);
   const [providerId, setProviderId] = useState(selected?.providerId ?? selected?.provider?.id ?? "");
@@ -129,7 +133,8 @@ function EditOrderForm({ orders, providers }: { orders: OrderItem[]; products: O
   const [riskNote, setRiskNote] = useState(selected?.riskNote ?? "");
   const [message, setMessage] = useState("");
   const [isSaving, setIsSaving] = useState(false);
-  const financials = getFinancials(amount, amountPaid, status === "CONSULTA" ? "0" : supplierCost);
+  const isInquiry = status === "CONSULTA";
+  const financials = getFinancials(amount, amountPaid, isInquiry ? "0" : supplierCost);
 
   function selectOrder(id: string) {
     const order = orders.find((item) => item.id === id);
@@ -157,14 +162,14 @@ function EditOrderForm({ orders, providers }: { orders: OrderItem[]; products: O
           amount: Number(amount || 0),
           deposit: Number(deposit || 0),
           amountPaid: Number(amountPaid || 0),
-          supplierCost: status === "CONSULTA" ? 0 : Number(supplierCost || 0),
+          supplierCost: isInquiry ? 0 : Number(supplierCost || 0),
           riskNote: riskNote.trim() || null,
         }),
       });
-      setMessage("Pedido actualizado.");
+      setMessage("Cambios guardados.");
       window.location.reload();
     } catch {
-      setMessage("No se pudo actualizar el pedido.");
+      setMessage("No se pudieron guardar los cambios.");
     } finally {
       setIsSaving(false);
     }
@@ -178,23 +183,25 @@ function EditOrderForm({ orders, providers }: { orders: OrderItem[]; products: O
         <Select
           label="Pedido"
           value={orderId}
-          options={orders.map((order) => ({ id: order.id, name: `${order.customer?.name ?? "Cliente"} - ${order.product?.name ?? "Producto"} - ${order.status}` }))}
+          options={orders.map((order) => ({ id: order.id, name: `${order.customer?.name ?? "Cliente"} - ${order.product?.name ?? "Producto"} - ${statusLabel(order.status)}` }))}
           onChange={selectOrder}
         />
         <EnumSelect label="Estado" value={status} values={orderStatuses} onChange={setStatus} />
         <Select label="Proveedor" value={providerId} options={providers} emptyLabel="Sin proveedor" onChange={setProviderId} />
-        <NumberInput label="Monto venta" value={amount} onChange={setAmount} />
-        <NumberInput label="Seña" value={deposit} onChange={setDeposit} />
-        <NumberInput label="Cobrado" value={amountPaid} onChange={setAmountPaid} />
-        <NumberInput label="Costo real" value={status === "CONSULTA" ? "0" : supplierCost} disabled={status === "CONSULTA"} onChange={setSupplierCost} />
+        <NumberInput label="Venta total" value={amount} onChange={setAmount} />
+        <NumberInput label="Seña cobrada" value={deposit} onChange={setDeposit} />
+        <NumberInput label="Dinero cobrado" value={amountPaid} onChange={setAmountPaid} />
+        <NumberInput label="Costo real proveedor" value={isInquiry ? "0" : supplierCost} disabled={isInquiry} onChange={setSupplierCost} />
         <label className="text-sm font-medium">
-          Riesgo
-          <input className="mt-1 w-full rounded-md border border-border px-3 py-2" value={riskNote} onChange={(event) => setRiskNote(event.target.value)} />
+          Nota de riesgo
+          <input className="mt-1 w-full rounded-md border border-border px-3 py-2" placeholder="Ej: demora, reclamo o saldo pendiente" value={riskNote} onChange={(event) => setRiskNote(event.target.value)} />
         </label>
       </div>
+      {status === "SENADO" ? <p className="mt-2 text-xs text-slate-500">SEÑADO significa que falta cobrar saldo para convertir ganancia teórica en caja.</p> : null}
+      {isInquiry ? <p className="mt-2 text-xs text-slate-500">En CONSULTA no se compromete costo real ni compra al proveedor.</p> : null}
       <FinancialPreview estimated={financials.estimated} realized={financials.realized} pending={financials.pending} />
       <button className="mt-4 rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:opacity-60" disabled={isSaving || !orderId}>
-        {isSaving ? "Guardando..." : "Actualizar pedido"}
+        {isSaving ? "Guardando..." : "Guardar cambios"}
       </button>
       {message ? <p className="mt-2 text-sm text-slate-600">{message}</p> : null}
     </form>
@@ -215,9 +222,9 @@ function getFinancials(amount: string, amountPaid: string, supplierCost: string)
 function FinancialPreview({ estimated, realized, pending }: { estimated: number; realized: number; pending: number }) {
   return (
     <div className="mt-3 grid gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm sm:grid-cols-3">
-      <span className="rounded-lg bg-white px-3 py-2 shadow-sm">Ganancia teórica: <strong className="block text-base text-slate-950">{money(estimated)}</strong></span>
-      <span className="rounded-lg bg-white px-3 py-2 shadow-sm">Ganancia cobrada: <strong className="block text-base text-slate-950">{money(realized)}</strong></span>
-      <span className="rounded-lg bg-white px-3 py-2 shadow-sm">Saldo pendiente: <strong className="block text-base text-slate-950">{money(pending)}</strong></span>
+      <span className="rounded-lg bg-white px-3 py-2 shadow-sm">Ganancia teórica <small className="block text-slate-500">No es caja real</small><strong className="block text-base text-slate-950">{money(estimated)}</strong></span>
+      <span className="rounded-lg bg-white px-3 py-2 shadow-sm">Ganancia cobrada <small className="block text-slate-500">Plata ganada efectivamente</small><strong className="block text-base text-slate-950">{money(realized)}</strong></span>
+      <span className="rounded-lg bg-white px-3 py-2 shadow-sm">Saldo pendiente <small className="block text-slate-500">Falta cobrar</small><strong className="block text-base text-slate-950">{money(pending)}</strong></span>
     </div>
   );
 }
@@ -257,7 +264,7 @@ function EnumSelect({ label, value, values, onChange }: { label: string; value: 
       <select className="mt-1 w-full rounded-md border border-border px-3 py-2" value={value} onChange={(event) => onChange(event.target.value)}>
         {values.map((item) => (
           <option key={item} value={item}>
-            {item}
+            {statusLabel(item)}
           </option>
         ))}
       </select>

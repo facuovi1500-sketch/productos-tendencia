@@ -49,7 +49,7 @@ export function ProductReorderForm({ products }: { products: ProductOption[] }) 
 
   return (
     <form className="mb-6 rounded-xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-slate-100/70" onSubmit={submit}>
-      <div className="grid gap-3 lg:grid-cols-[220px_170px_1fr_auto]">
+      <div className="grid gap-3 lg:grid-cols-[220px_190px_1fr_auto]">
         <label className="text-sm font-medium">
           Producto
           <select className="mt-1 w-full rounded-md border border-border px-3 py-2" value={productId} onChange={(event) => selectProduct(event.target.value)}>
@@ -60,18 +60,20 @@ export function ProductReorderForm({ products }: { products: ProductOption[] }) 
             ))}
           </select>
         </label>
-        <label className="flex items-end gap-2 pb-2 text-sm font-medium">
+        <label className="flex items-end gap-2 pb-2 text-sm font-medium text-red-700">
           <input checked={doNotReorder} type="checkbox" onChange={(event) => setDoNotReorder(event.target.checked)} />
-          Bloquear recompra
+          No recomprar todavía
         </label>
         <label className="text-sm font-medium">
-          Motivo
-          <input className="mt-1 w-full rounded-md border border-border px-3 py-2" value={reason} onChange={(event) => setReason(event.target.value)} />
+          Motivo de bloqueo
+          <input className="mt-1 w-full rounded-md border border-border px-3 py-2" placeholder="Ej: muchas consultas sin seña, proveedor con reclamos" value={reason} onChange={(event) => setReason(event.target.value)} />
         </label>
-        <button className="self-end rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:opacity-60" disabled={isSaving || !productId}>
-          {isSaving ? "Guardando..." : "Guardar"}
+        <button className="self-end rounded-lg bg-red-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-red-800 disabled:opacity-60" disabled={isSaving || !productId}>
+          {isSaving ? "Guardando..." : "Guardar bloqueo"}
         </button>
       </div>
+      <p className="mt-2 text-xs text-slate-500">Bloqueá recompra cuando no hay señas reales, hay reclamos o la ganancia todavía es teórica.</p>
+      {message ? <p className="mt-2 text-sm text-slate-600">{message}</p> : null}
     </form>
   );
 }

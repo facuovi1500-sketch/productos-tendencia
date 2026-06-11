@@ -1,5 +1,6 @@
-import { Badge, DataTable, PageHeader } from "@/components/ui";
+import { Badge, Card, CardTitle, DataTable, PageHeader } from "@/components/ui";
 import { demo, getApi } from "@/lib/api";
+import { providerStatusTone, statusLabel } from "@/lib/labels";
 
 type ProviderRow = {
   id: string;
@@ -15,21 +16,6 @@ type ProviderRow = {
   status: string;
 };
 
-function providerTone(status: string): "green" | "amber" | "red" {
-  if (status === "ACTIVO") return "green";
-  if (status === "DESCARTADO") return "red";
-  return "amber";
-}
-
-function providerLabel(status: string) {
-  const labels: Record<string, string> = {
-    ACTIVO: "Activo",
-    PRUEBA: "Prueba",
-    DESCARTADO: "Descartado",
-  };
-  return labels[status] ?? status;
-}
-
 export default async function ProvidersPage() {
   const rows = await getApi<ProviderRow[]>("/providers", demo.providers as ProviderRow[]);
 
@@ -37,24 +23,28 @@ export default async function ProvidersPage() {
     <>
       <PageHeader
         title="Proveedores"
-        description="Evalúa precio, cumplimiento, demoras, fallas y reclamos antes de elegir a quién comprar."
+        description="Elegí por conveniencia operativa: precio, cumplimiento, demora, fallas y reclamos. El más barato no siempre conviene."
       />
+      <Card className="mb-6 border-amber-200 bg-amber-50/60">
+        <CardTitle>Regla de uso</CardTitle>
+        <p className="mt-2 text-sm text-slate-700">Antes de comprar, revisá demoras, fallas y reclamos. Un proveedor barato con mala entrega puede poner pedidos y caja en riesgo.</p>
+      </Card>
       <DataTable<ProviderRow>
         rows={rows}
         columns={[
-          { key: "name", label: "Nombre" },
+          { key: "name", label: "Proveedor" },
           { key: "whatsapp", label: "WhatsApp" },
           { key: "city", label: "Ciudad" },
-          { key: "leadTimeDays", label: "Entrega estimada" },
-          { key: "quality", label: "Calidad" },
-          { key: "onTimeDeliveries", label: "A tiempo" },
-          { key: "lateDeliveries", label: "Demoras" },
-          { key: "failedDeliveries", label: "Fallas" },
+          { key: "leadTimeDays", label: "Demora estimada", render: (row) => `${row.leadTimeDays} días` },
+          { key: "quality", label: "Calidad 1-10" },
+          { key: "onTimeDeliveries", label: "Entregas a tiempo" },
+          { key: "lateDeliveries", label: "Entregas tarde" },
+          { key: "failedDeliveries", label: "Entregas fallidas" },
           { key: "claimsCount", label: "Reclamos" },
           {
             key: "status",
             label: "Estado",
-            render: (row) => <Badge tone={providerTone(String(row.status))}>{providerLabel(String(row.status))}</Badge>,
+            render: (row) => <Badge tone={providerStatusTone(String(row.status))}>{statusLabel(String(row.status))}</Badge>,
           },
         ]}
       />
