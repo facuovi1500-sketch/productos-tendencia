@@ -87,6 +87,8 @@ export default async function DashboardPage() {
   ]);
   const pendingCollections = getPendingCollections(orders);
   const inquiryActions = getInquiryActions(inquiries);
+  const depositRequests = inquiryActions.filter((row) => row.status === "ABIERTA" || row.status === "RESERVA_SIN_SENA");
+  const conversionActions = inquiryActions.filter((row) => row.status === "RESERVA_CON_SENA");
   const atRiskOrders = getAtRiskRows(data);
   const productsToPause = getProductsToPause(data);
   const replenishmentCandidates = getReplenishmentCandidates(data);
@@ -104,37 +106,35 @@ export default async function DashboardPage() {
           <QuickButton href="/inquiries" label="Nueva consulta" tone="primary" icon={<ClipboardPlus className="h-4 w-4" />} />
           <QuickButton href="#cargar-caja" label="Actualizar caja" tone="success" icon={<Banknote className="h-4 w-4" />} />
           <QuickButton href="/orders" label="Nuevo pedido" tone="dark" icon={<ShoppingCart className="h-4 w-4" />} />
-          <QuickButton href="/products" label="Productos en prueba" tone="danger" icon={<PackageSearch className="h-4 w-4" />} />
+          <QuickButton href="/products" label="Productos en prueba" tone="warning" icon={<PackageSearch className="h-4 w-4" />} />
         </div>
       </header>
 
-      <section className="rounded-3xl border border-slate-200 bg-slate-950 p-5 text-white shadow-xl shadow-slate-200/80">
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.25fr)_minmax(360px,0.75fr)]">
+      <section className="rounded-3xl border border-slate-200 bg-slate-950 p-4 text-white shadow-xl shadow-slate-200/80">
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(360px,0.75fr)]">
           <div>
             <div className="flex items-center gap-3">
-              <span className="rounded-2xl bg-emerald-400/15 p-3 text-emerald-300 ring-1 ring-emerald-300/20">
-                <PiggyBank className="h-6 w-6" />
+              <span className="rounded-2xl bg-emerald-400/15 p-2.5 text-emerald-300 ring-1 ring-emerald-300/20">
+                <PiggyBank className="h-5 w-5" />
               </span>
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-300">Caja real</p>
                 <h2 className="mt-1 text-sm font-medium text-slate-300">Plata disponible hoy para operar</h2>
               </div>
             </div>
-            <div className="mt-6 text-5xl font-bold tracking-tight sm:text-6xl">{money(data.cashAvailable)}</div>
-            <p className="mt-3 max-w-xl text-sm leading-6 text-slate-300">
-              Esta es la referencia principal. No uses ganancia teórica para decidir compras.
-            </p>
+            <div className="mt-4 text-4xl font-bold tracking-tight sm:text-5xl">{money(data.cashAvailable)}</div>
+            <p className="mt-2 max-w-xl text-sm leading-5 text-slate-300">No uses ganancia teórica para decidir compras.</p>
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Plata</p>
-                <h3 className="mt-1 text-lg font-semibold">Resumen de caja</h3>
+                <h3 className="mt-1 text-base font-semibold">Resumen de caja</h3>
               </div>
               <Badge tone={pendingCollections.length > 0 ? "amber" : "green"}>{pendingCollections.length} saldos</Badge>
             </div>
-            <div className="mt-4 grid gap-3">
+            <div className="mt-3 grid gap-2">
               <MoneyLine label="Plata comprometida" value={money(data.committedCapital)} tone="amber" />
               <MoneyLine label="Plata libre" value={money(data.freeCapital)} tone="green" />
               <MoneyLine label="Falta cobrar" value={money(pendingTotal)} tone="amber" />
@@ -146,11 +146,11 @@ export default async function DashboardPage() {
 
       <section className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]">
         <DeskColumn
-          badge={`${pendingCollections.length + atRiskOrders.length + inquiryActions.length} tareas`}
+          badge={`${pendingCollections.length + depositRequests.length + atRiskOrders.length + conversionActions.length} tareas`}
           description="Orden de trabajo diario: cobrar, revisar riesgo y convertir consultas."
           title="Hoy primero"
         >
-          <WorkQueue title="Falta cobrar" description="Cobrar antes de comprometer más plata." empty="No hay saldos pendientes.">
+          <WorkQueue title="Falta cobrar" description="Deuda real: pedidos con saldo pendiente." empty="No hay saldos pendientes.">
             {pendingCollections.map((row) => (
               <TaskRow
                 key={row.id ?? `${row.customerName}-${row.productName}`}
@@ -160,6 +160,19 @@ export default async function DashboardPage() {
                 amount={money(row.pendingBalance)}
                 action={row.action}
                 tone="amber"
+              />
+            ))}
+          </WorkQueue>
+
+          <WorkQueue title="Pedir seña" description="Interés o reserva sin seña. No es deuda real todavía." empty="No hay consultas pendientes de seña.">
+            {depositRequests.map((row) => (
+              <TaskRow
+                key={row.id ?? `${row.productName}-${row.customerName}`}
+                title={row.productName}
+                detail={`${row.customerName} · ${row.source}`}
+                meta={<Badge tone={inquiryStatusTone(row.status)}>{statusLabel(row.status)}</Badge>}
+                action="Pedir seña"
+                tone="blue"
               />
             ))}
           </WorkQueue>
@@ -177,8 +190,8 @@ export default async function DashboardPage() {
             ))}
           </WorkQueue>
 
-          <WorkQueue title="Consultas para convertir" description="Pedir seña, convertir a pedido o cerrar." empty="No hay consultas para convertir.">
-            {inquiryActions.map((row) => (
+          <WorkQueue title="Consultas para convertir" description="Reservas con seña para vincular o convertir a pedido." empty="No hay consultas para convertir.">
+            {conversionActions.map((row) => (
               <TaskRow
                 key={row.id ?? `${row.productName}-${row.customerName}`}
                 title={row.productName}
@@ -259,12 +272,12 @@ export default async function DashboardPage() {
   );
 }
 
-function QuickButton({ href, icon, label, tone }: { href: string; icon: ReactNode; label: string; tone: "primary" | "success" | "dark" | "danger" }) {
+function QuickButton({ href, icon, label, tone }: { href: string; icon: ReactNode; label: string; tone: "primary" | "success" | "dark" | "warning" }) {
   const styles = {
     primary: "border-blue-700 bg-blue-700 text-white hover:bg-blue-800",
     success: "border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700",
     dark: "border-slate-900 bg-slate-900 text-white hover:bg-slate-800",
-    danger: "border-red-100 bg-red-50 text-red-800 hover:bg-red-100",
+    warning: "border-amber-300 bg-amber-100 text-amber-950 hover:bg-amber-200",
   };
 
   return (
@@ -429,7 +442,7 @@ function getAtRiskRows(data: Dashboard): AtRiskOrderRow[] {
 function getProductsToPause(data: Dashboard): ProductToPauseRow[] {
   return (data.productsToPause as ProductToPauseBaseRow[]).map((product) => ({
     ...product,
-    action: "No comprar todavía",
+    action: "Pausar compra",
   }));
 }
 
@@ -447,10 +460,7 @@ function getReplenishmentCandidates(data: Dashboard): ReplenishmentCandidateRow[
 }
 
 function getReplenishmentAction(product: Pick<ReplenishmentCandidateRow, "deposits" | "delivered" | "realProfit">) {
-  if (product.deposits > 0 && product.delivered > 0) return "Revisar proveedor y caja";
-  if (product.deposits > 0) return "Validar saldo y proveedor";
-  if (product.delivered > 0) return "Revisar rotación antes de reponer";
-  return "Esperar más validación";
+  return "Revisar reposición";
 }
 
 function sumPending(rows: PendingCollectionRow[]) {
