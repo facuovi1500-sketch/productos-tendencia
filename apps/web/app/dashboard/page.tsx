@@ -1,6 +1,6 @@
-import { AlertTriangle, Banknote, ClipboardPlus, PackageSearch, PiggyBank, ShieldAlert, ShoppingCart } from "lucide-react";
-import type { ReactElement, ReactNode } from "react";
-import { ActionCard, Badge, Card, CardTitle, DataTable, PageHeader, StatCard } from "@/components/ui";
+import { ArrowRight, Banknote, ClipboardPlus, PackageSearch, PiggyBank, ShoppingCart } from "lucide-react";
+import type { ReactNode } from "react";
+import { Badge, CardTitle, DataTable } from "@/components/ui";
 import { CashSnapshotForm } from "@/components/cash-snapshot-form";
 import { demo, getApi } from "@/lib/api";
 import { inquiryStatusTone, orderStatusTone, statusLabel } from "@/lib/labels";
@@ -78,11 +78,6 @@ type InquiryActionRow = {
   status: string;
   action: string;
 };
-type TodayAction = {
-  label: string;
-  text: string;
-  tone: "risk" | "cash" | "balance" | "validation";
-};
 
 export default async function DashboardPage() {
   const [data, orders, inquiries] = await Promise.all([
@@ -95,198 +90,376 @@ export default async function DashboardPage() {
   const atRiskOrders = getAtRiskRows(data);
   const productsToPause = getProductsToPause(data);
   const replenishmentCandidates = getReplenishmentCandidates(data);
-  const todayActions = getTodayActions(data, pendingCollections, inquiryActions);
+  const pendingTotal = sumPending(pendingCollections);
 
   return (
     <>
-      <PageHeader
-        title="Inicio operativo"
-        description="Tablero diario para decidir qué cobrar, qué revisar, qué convertir, qué no comprar y qué productos podrían reponerse."
-      />
+      <header className="mb-5 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Mesa de control</p>
+          <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-950">Inicio operativo</h1>
+          <p className="mt-1 max-w-2xl text-sm text-slate-600">Caja, cobros, riesgo y compras pendientes en una vista diaria.</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <QuickButton href="/inquiries" label="Nueva consulta" tone="primary" icon={<ClipboardPlus className="h-4 w-4" />} />
+          <QuickButton href="#cargar-caja" label="Actualizar caja" tone="success" icon={<Banknote className="h-4 w-4" />} />
+          <QuickButton href="/orders" label="Nuevo pedido" tone="warning" icon={<ShoppingCart className="h-4 w-4" />} />
+          <QuickButton href="/products" label="Productos en prueba" tone="danger" icon={<PackageSearch className="h-4 w-4" />} />
+        </div>
+      </header>
 
-      <Card className="mb-6">
-        <div className="flex flex-col gap-4">
-          <div>
-            <CardTitle>Acciones rápidas</CardTitle>
-            <p className="mt-1 text-sm text-slate-600">Cargá datos reales apenas pasan: consulta, pedido, caja o bloqueo de recompra.</p>
+      <section className="grid gap-5 xl:grid-cols-[minmax(0,1.45fr)_420px]">
+        <div className="rounded-2xl border border-slate-200 bg-slate-950 p-5 text-white shadow-lg shadow-slate-200/70">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Hoy primero</p>
+              <h2 className="mt-1 text-xl font-semibold">Resolver antes de comprar más</h2>
+            </div>
+            <Badge tone={atRiskOrders.length > 0 || pendingCollections.length > 0 ? "amber" : "green"}>
+              {atRiskOrders.length + pendingCollections.length} temas activos
+            </Badge>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <ActionCard description="Registrá interés real antes de comprar." href="/inquiries" icon={<ClipboardPlus className="h-4 w-4" />} label="Nueva consulta" variant="primary" />
-            <ActionCard description="Cargá plata disponible hoy." href="#cargar-caja" icon={<Banknote className="h-4 w-4" />} label="Actualizar caja" variant="success" />
-            <ActionCard description="Usar solo con seña o venta confirmada." href="/orders" icon={<ShoppingCart className="h-4 w-4" />} label="Nuevo pedido" variant="warning" />
-            <ActionCard description="Revisá qué no conviene recomprar." href="/products" icon={<PackageSearch className="h-4 w-4" />} label="Productos en prueba" variant="danger" />
+
+          <div className="mt-5 grid gap-3">
+            <PriorityTask
+              actionHref="/orders"
+              actionLabel="Ver saldos"
+              detail={`${pendingCollections.length} pedidos con saldo por ${money(pendingTotal)}`}
+              priority={pendingCollections.length > 0 ? "Alta" : "Baja"}
+              title="Cobrar saldos pendientes"
+              tone={pendingCollections.length > 0 ? "amber" : "green"}
+            />
+            <PriorityTask
+              actionHref="/orders"
+              actionLabel="Revisar pedidos"
+              detail={atRiskOrders.length > 0 ? `${atRiskOrders.length} pedidos abiertos requieren seguimiento` : "No hay pedidos en riesgo activo"}
+              priority={atRiskOrders.length > 0 ? "Alta" : "Baja"}
+              title="Revisar pedidos en riesgo"
+              tone={atRiskOrders.length > 0 ? "red" : "green"}
+            />
+            <PriorityTask
+              actionHref="/products"
+              actionLabel="Ver productos"
+              detail={productsToPause.length > 0 ? `${productsToPause.length} productos marcados para no recomprar` : "Comprar solo con señas o entregas validadas"}
+              priority={productsToPause.length > 0 ? "Media" : "Baja"}
+              title="No comprar productos sin señas"
+              tone={productsToPause.length > 0 ? "red" : "blue"}
+            />
           </div>
         </div>
-      </Card>
 
-      <Card className="mb-6 border-sky-200 bg-sky-50/60">
-        <CardTitle>Qué hacer hoy</CardTitle>
-        <div className="mt-3 grid gap-3 text-sm text-slate-700 md:grid-cols-2 xl:grid-cols-4">
-          {todayActions.map((action) => (
-            <PriorityCard action={action} key={`${action.label}-${action.text}`} />
+        <FinancialPanel
+          cashAvailable={data.cashAvailable}
+          committedCapital={data.committedCapital}
+          freeCapital={data.freeCapital}
+          realizedProfit={data.realizedProfit}
+        />
+      </section>
+
+      <div className="mt-5 grid gap-4 md:grid-cols-3">
+        <SignalCard label="Cobrar ahora" value={money(pendingTotal)} helper={`${pendingCollections.length} saldos pendientes`} tone="amber" />
+        <SignalCard label="Riesgo activo" value={atRiskOrders.length} helper="Pedidos abiertos para revisar" tone={atRiskOrders.length > 0 ? "red" : "green"} />
+        <SignalCard label="Conversión pendiente" value={inquiryActions.length} helper="Consultas para convertir o cerrar" tone={inquiryActions.length > 0 ? "blue" : "green"} />
+      </div>
+
+      <div className="mt-6 grid gap-5 xl:grid-cols-2">
+        <WorkQueue title="Cobrar ahora" description="Saldos que conviene cobrar antes de comprometer caja." empty="No hay saldos pendientes.">
+          {pendingCollections.map((row) => (
+            <TaskRow
+              key={row.id ?? `${row.customerName}-${row.productName}`}
+              title={row.customerName}
+              detail={row.productName}
+              meta={<Badge tone={orderStatusTone(row.status)}>{statusLabel(row.status)}</Badge>}
+              amount={money(row.pendingBalance)}
+              action={row.action}
+              tone="amber"
+            />
           ))}
-        </div>
-      </Card>
+        </WorkQueue>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
-        <StatCard label="Caja disponible" value={money(data.cashAvailable)} helper="Plata real hoy. Se carga manualmente." icon={<PiggyBank className="h-4 w-4" />} tone="green" />
-        <StatCard label="Cobrar pendientes" value={money(sumPending(pendingCollections))} helper={`${pendingCollections.length} pedidos con saldo.`} icon={<Banknote className="h-4 w-4" />} tone={pendingCollections.length > 0 ? "amber" : "green"} />
-        <StatCard label="Pedidos en riesgo" value={atRiskOrders.length} helper="Abiertos con riesgo activo." icon={<AlertTriangle className="h-4 w-4" />} tone={atRiskOrders.length > 0 ? "red" : "default"} />
-        <StatCard label="Consultas para convertir" value={inquiryActions.length} helper="Abrir, señar, convertir o cerrar." icon={<ClipboardPlus className="h-4 w-4" />} tone={inquiryActions.length > 0 ? "blue" : "default"} />
-        <StatCard label="No recomprar / pausar" value={productsToPause.length} helper="Evita compras sin validación." icon={<ShieldAlert className="h-4 w-4" />} tone={productsToPause.length > 0 ? "red" : "default"} />
-        <StatCard label="Candidatos a reponer" value={replenishmentCandidates.length} helper="Con señas o entregas registradas." icon={<PackageSearch className="h-4 w-4" />} tone={replenishmentCandidates.length > 0 ? "green" : "default"} />
+        <WorkQueue title="Pedidos en riesgo" description="Pedidos abiertos con demora, exposición o nota de riesgo." empty="No hay pedidos en riesgo.">
+          {atRiskOrders.map((row) => (
+            <TaskRow
+              key={row.id ?? `${row.customerName}-${row.productName}`}
+              title={row.productName}
+              detail={`${row.customerName} · ${row.providerName}`}
+              meta={<Badge tone="red">{row.riskNote}</Badge>}
+              action={row.action}
+              tone="red"
+            />
+          ))}
+        </WorkQueue>
       </div>
 
-      <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Plata comprometida en pedidos" value={money(data.committedCapital)} helper="Costo de pedidos abiertos." tone="amber" />
-        <StatCard label="Plata libre para operar" value={money(data.freeCapital)} helper="Caja menos compromisos." tone="green" />
-        <StatCard label="Riesgo de plata pendiente" value={money(data.netCashExposure)} helper="Compromiso menos señas cobradas." tone="amber" />
-        <StatCard label="Ganancia cobrada" value={money(data.realizedProfit)} helper="Plata ganada efectivamente, no teórica." tone="green" />
-      </div>
+      <div className="mt-5 grid gap-5 xl:grid-cols-3">
+        <WorkQueue title="Consultas para convertir" description="Pedir seña, convertir a pedido o cerrar como perdida." empty="No hay consultas para convertir.">
+          {inquiryActions.map((row) => (
+            <TaskRow
+              key={row.id ?? `${row.productName}-${row.customerName}`}
+              title={row.productName}
+              detail={`${row.customerName} · ${row.source}`}
+              meta={<Badge tone={inquiryStatusTone(row.status)}>{statusLabel(row.status)}</Badge>}
+              action={row.action}
+              tone={row.status === "RESERVA_CON_SENA" ? "green" : "blue"}
+            />
+          ))}
+        </WorkQueue>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-2">
-        <OperationalTable title="Cobrar pendientes" description="Primero cobrar saldos antes de comprometer más plata." empty="No hay saldos pendientes.">
-          <DataTable<PendingCollectionRow>
-            rows={pendingCollections}
-            columns={[
-              { key: "customerName", label: "Cliente" },
-              { key: "productName", label: "Producto" },
-              { key: "pendingBalance", label: "Saldo", render: (row) => money(row.pendingBalance) },
-              { key: "status", label: "Estado", render: (row) => <Badge tone={orderStatusTone(row.status)}>{statusLabel(row.status)}</Badge> },
-              { key: "action", label: "Acción sugerida" },
-            ]}
-          />
-        </OperationalTable>
+        <WorkQueue title="No recomprar todavía" description="Productos que pueden quemar caja si se compran sin validar." empty="No hay productos para pausar.">
+          {productsToPause.map((row) => (
+            <TaskRow
+              key={row.id ?? row.productName}
+              title={row.productName}
+              detail={`${row.inquiries} consultas · ${row.deposits} señas`}
+              meta={<Badge tone="softRed">{row.reason}</Badge>}
+              action={row.action}
+              tone="red"
+            />
+          ))}
+        </WorkQueue>
 
-        <OperationalTable title="Pedidos en riesgo" description="Revisar proveedor, demora, saldo o exposición antes de comprar más." empty="No hay pedidos en riesgo.">
-          <DataTable<AtRiskOrderRow>
-            rows={atRiskOrders}
-            columns={[
-              { key: "customerName", label: "Cliente" },
-              { key: "productName", label: "Producto" },
-              { key: "providerName", label: "Proveedor" },
-              { key: "riskNote", label: "Motivo" },
-              { key: "action", label: "Acción sugerida" },
-            ]}
-          />
-        </OperationalTable>
-      </div>
-
-      <div className="mt-6 grid gap-6 lg:grid-cols-2">
-        <OperationalTable title="Consultas para convertir" description="Separar interés de venta validada: pedir seña, convertir o cerrar como perdida." empty="No hay consultas para convertir.">
-          <DataTable<InquiryActionRow>
-            rows={inquiryActions}
-            columns={[
-              { key: "productName", label: "Producto" },
-              { key: "customerName", label: "Cliente" },
-              { key: "source", label: "Origen", render: (row) => <Badge>{row.source}</Badge> },
-              { key: "status", label: "Estado", render: (row) => <Badge tone={inquiryStatusTone(row.status)}>{statusLabel(row.status)}</Badge> },
-              { key: "action", label: "Acción sugerida" },
-            ]}
-          />
-        </OperationalTable>
-
-        <OperationalTable title="No recomprar / pausar" description="Productos que pueden quemar caja por baja validación, margen débil o bloqueo manual." empty="No hay productos para pausar.">
-          <DataTable<ProductToPauseRow>
-            rows={productsToPause}
-            columns={[
-              { key: "productName", label: "Producto" },
-              { key: "inquiries", label: "Consultas" },
-              { key: "deposits", label: "Señas" },
-              { key: "reason", label: "Motivo" },
-              { key: "action", label: "Acción" },
-            ]}
-          />
-        </OperationalTable>
-      </div>
-
-      <div className="mt-6 grid gap-6 lg:grid-cols-2">
-        <OperationalTable title="Productos candidatos a reponer" description="Criterio simple: señas o entregas registradas, sin bloqueo, y margen real positivo." empty="Todavía no hay productos con demanda suficiente para reponer.">
-          <DataTable<ReplenishmentCandidateRow>
-            rows={replenishmentCandidates}
-            columns={[
-              { key: "productName", label: "Producto" },
-              { key: "deposits", label: "Señas" },
-              { key: "delivered", label: "Entregados" },
-              { key: "realProfit", label: "Ganancia cobrada", render: (row) => money(row.realProfit) },
-              { key: "action", label: "Acción sugerida" },
-            ]}
-          />
-        </OperationalTable>
-
-        <Card>
-          <CardTitle>Productos más consultados</CardTitle>
-          <p className="mt-2 text-sm text-slate-600">Muchas consultas no alcanzan para comprar: buscá señas o pedidos antes de recomprar.</p>
-          <div className="mt-4 space-y-3">
-            {data.topConsultedProducts.length > 0 ? data.topConsultedProducts.map((product) => (
-              <div className="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50 px-3 py-2" key={product.id}>
-                <span className="font-medium">{product.name}</span>
-                <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-slate-600 ring-1 ring-slate-200">{product.inquiries} consultas</span>
-              </div>
-            )) : <p className="text-sm text-slate-500">Todavía no hay consultas registradas.</p>}
-          </div>
-        </Card>
+        <WorkQueue title="Candidatos a reponer" description="Con señas o entregas y ganancia cobrada positiva." empty="Todavía no hay productos con demanda suficiente para reponer.">
+          {replenishmentCandidates.map((row) => (
+            <TaskRow
+              key={row.id ?? row.productName}
+              title={row.productName}
+              detail={`${row.deposits} señas · ${row.delivered} entregados`}
+              meta={<Badge tone="green">{money(row.realProfit)}</Badge>}
+              action={row.action}
+              tone="green"
+            />
+          ))}
+        </WorkQueue>
       </div>
 
       <div className="mt-6" id="cargar-caja">
         <CashSnapshotForm />
       </div>
 
-      <div className="mt-6">
-        <OperationalTable title="Demanda validada" description="Vista secundaria para revisar qué productos ya tienen señales de compra reales." empty="Todavía no hay demanda validada.">
-          <DataTable<ReplenishmentCandidateRow>
-            rows={(data.validatedDemand as ValidatedDemandRow[]).map((row) => ({ ...row, action: getReplenishmentAction(row) }))}
-          columns={[
-            { key: "productName", label: "Demanda validada" },
-            { key: "inquiries", label: "Consultas" },
-            { key: "deposits", label: "Señas" },
-            { key: "delivered", label: "Entregados" },
-            { key: "realProfit", label: "Ganancia cobrada", render: (row) => money(row.realProfit as number) },
-            { key: "action", label: "Lectura operativa" },
-          ]}
-        />
-        </OperationalTable>
+      <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <CardTitle>Resumen secundario</CardTitle>
+            <p className="mt-1 text-sm text-slate-600">Datos de contexto. No reemplazan las colas de trabajo del día.</p>
+          </div>
+          <Badge tone="default">Lectura rápida</Badge>
+        </div>
+        <div className="mt-4 grid gap-5 xl:grid-cols-2">
+          <SecondaryList title="Productos más consultados">
+            {data.topConsultedProducts.length > 0 ? data.topConsultedProducts.map((product) => (
+              <MiniRow key={product.id} label={product.name} value={`${product.inquiries} consultas`} />
+            )) : <EmptyState>Todavía no hay consultas registradas.</EmptyState>}
+          </SecondaryList>
+          <SecondaryList title="Demanda validada">
+            <DataTable<ReplenishmentCandidateRow>
+              rows={(data.validatedDemand as ValidatedDemandRow[]).map((row) => ({ ...row, action: getReplenishmentAction(row) }))}
+              columns={[
+                { key: "productName", label: "Producto" },
+                { key: "deposits", label: "Señas" },
+                { key: "delivered", label: "Entregados" },
+                { key: "realProfit", label: "Ganancia cobrada", render: (row) => money(row.realProfit as number) },
+              ]}
+            />
+          </SecondaryList>
+        </div>
       </div>
     </>
   );
 }
 
-function getTodayActions(data: Dashboard, pendingCollections: PendingCollectionRow[], inquiryActions: InquiryActionRow[]): TodayAction[] {
-  const actions: TodayAction[] = [
-    { label: "Cierre diario", text: "Actualizar caja al cierre del día.", tone: "cash" },
-    { label: "Validación", text: "No recomprar productos sin señas suficientes.", tone: "validation" },
-  ];
-  if (pendingCollections.length > 0 || Number(data.netCashExposure) > 0) actions.unshift({ label: "Antes de comprar", text: "Cobrar saldos pendientes antes de comprar más.", tone: "balance" });
-  if (data.atRiskOrders.length > 0) actions.unshift({ label: "Prioridad alta", text: "Revisar pedidos en riesgo.", tone: "risk" });
-  if (inquiryActions.length > 0) actions.push({ label: "Validación", text: "Convertir consultas o marcarlas como perdidas.", tone: "validation" });
-  return actions.slice(0, 5);
-}
-
-function PriorityCard({ action }: { action: TodayAction }) {
-  const styles: Record<TodayAction["tone"], string> = {
-    risk: "border-red-200 bg-red-50 text-red-950",
-    cash: "border-emerald-200 bg-emerald-50 text-emerald-950",
-    balance: "border-amber-200 bg-amber-50 text-amber-950",
-    validation: "border-sky-200 bg-sky-50 text-sky-950",
+function QuickButton({ href, icon, label, tone }: { href: string; icon: ReactNode; label: string; tone: "primary" | "success" | "warning" | "danger" }) {
+  const styles = {
+    primary: "border-blue-700 bg-blue-700 text-white hover:bg-blue-800",
+    success: "border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700",
+    warning: "border-amber-500 bg-amber-500 text-slate-950 hover:bg-amber-600",
+    danger: "border-red-100 bg-red-50 text-red-800 hover:bg-red-100",
   };
 
   return (
-    <div className={`rounded-xl border p-3 shadow-sm ${styles[action.tone]}`}>
-      <span className="inline-flex rounded-full bg-white/80 px-2 py-1 text-[11px] font-bold uppercase tracking-wide ring-1 ring-black/5">{action.label}</span>
-      <p className="mt-2 leading-5">{action.text}</p>
+    <a className={`inline-flex min-h-10 items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold shadow-sm transition ${styles[tone]}`} href={href}>
+      {icon}
+      {label}
+    </a>
+  );
+}
+
+function PriorityTask({
+  actionHref,
+  actionLabel,
+  detail,
+  priority,
+  title,
+  tone,
+}: {
+  actionHref: string;
+  actionLabel: string;
+  detail: string;
+  priority: "Alta" | "Media" | "Baja";
+  title: string;
+  tone: "red" | "amber" | "green" | "blue";
+}) {
+  const styles = {
+    red: "border-red-400/30 bg-red-500/10",
+    amber: "border-amber-300/30 bg-amber-400/10",
+    green: "border-emerald-300/30 bg-emerald-400/10",
+    blue: "border-sky-300/30 bg-sky-400/10",
+  };
+
+  return (
+    <div className={`rounded-xl border p-4 ${styles[tone]}`}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <span className="inline-flex rounded-full bg-white/10 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-white ring-1 ring-white/15">
+            Prioridad {priority}
+          </span>
+          <h3 className="mt-2 text-base font-semibold">{title}</h3>
+          <p className="mt-1 text-sm text-slate-300">{detail}</p>
+        </div>
+        <a className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-white px-3 py-2 text-sm font-semibold text-slate-950 shadow-sm transition hover:bg-slate-100" href={actionHref}>
+          {actionLabel}
+          <ArrowRight className="h-4 w-4" />
+        </a>
+      </div>
     </div>
   );
 }
 
-function OperationalTable({ children, description, empty, title }: { children: ReactNode; description: string; empty: string; title: string }) {
-  const table = children as ReactElement<{ rows?: unknown[] }>;
-  const rows = table.props.rows ?? [];
+function FinancialPanel({
+  cashAvailable,
+  committedCapital,
+  freeCapital,
+  realizedProfit,
+}: {
+  cashAvailable: number;
+  committedCapital: number;
+  freeCapital: number;
+  realizedProfit: number;
+}) {
   return (
-    <Card>
-      <CardTitle>{title}</CardTitle>
-      <p className="mt-2 text-sm text-slate-600">{description}</p>
-      <div className="mt-4">{rows.length > 0 ? children : <EmptyState>{empty}</EmptyState>}</div>
-    </Card>
+    <aside className="rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-slate-50 p-5 shadow-lg shadow-emerald-100/50">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Resumen financiero</p>
+          <h2 className="mt-1 text-sm font-semibold text-slate-700">Caja real disponible</h2>
+        </div>
+        <span className="rounded-xl bg-white p-2 text-emerald-700 shadow-sm ring-1 ring-emerald-100">
+          <PiggyBank className="h-5 w-5" />
+        </span>
+      </div>
+      <div className="mt-5 text-4xl font-bold tracking-tight text-slate-950">{money(cashAvailable)}</div>
+      <p className="mt-2 text-sm text-slate-600">Plata real hoy. No se calcula desde ganancia teórica.</p>
+
+      <div className="mt-5 grid gap-3">
+        <MoneyLine label="Plata comprometida" value={money(committedCapital)} tone="amber" />
+        <MoneyLine label="Plata libre para operar" value={money(freeCapital)} tone="green" />
+        <MoneyLine label="Ganancia cobrada" value={money(realizedProfit)} tone="blue" />
+      </div>
+    </aside>
+  );
+}
+
+function MoneyLine({ label, tone, value }: { label: string; tone: "amber" | "green" | "blue"; value: string }) {
+  const styles = {
+    amber: "bg-amber-50 text-amber-900 ring-amber-100",
+    green: "bg-emerald-50 text-emerald-900 ring-emerald-100",
+    blue: "bg-sky-50 text-sky-900 ring-sky-100",
+  };
+
+  return (
+    <div className={`flex items-center justify-between rounded-xl px-3 py-3 ring-1 ${styles[tone]}`}>
+      <span className="text-sm font-medium">{label}</span>
+      <strong className="text-sm tabular-nums">{value}</strong>
+    </div>
+  );
+}
+
+function SignalCard({ helper, label, tone, value }: { helper: string; label: string; tone: "amber" | "red" | "green" | "blue"; value: ReactNode }) {
+  const styles = {
+    amber: "border-amber-200 bg-amber-50 text-amber-950",
+    red: "border-red-200 bg-red-50 text-red-950",
+    green: "border-emerald-200 bg-emerald-50 text-emerald-950",
+    blue: "border-sky-200 bg-sky-50 text-sky-950",
+  };
+
+  return (
+    <div className={`rounded-2xl border p-4 shadow-sm ${styles[tone]}`}>
+      <p className="text-xs font-semibold uppercase tracking-wide opacity-70">{label}</p>
+      <div className="mt-2 text-2xl font-bold tracking-tight">{value}</div>
+      <p className="mt-1 text-sm opacity-75">{helper}</p>
+    </div>
+  );
+}
+
+function WorkQueue({ children, description, empty, title }: { children: ReactNode; description: string; empty: string; title: string }) {
+  const items = Array.isArray(children) ? children.filter(Boolean) : children ? [children] : [];
+  return (
+    <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-base font-semibold text-slate-950">{title}</h2>
+          <p className="mt-1 text-sm text-slate-600">{description}</p>
+        </div>
+        <Badge tone={items.length > 0 ? "blue" : "default"}>{items.length}</Badge>
+      </div>
+      <div className="space-y-3">{items.length > 0 ? children : <EmptyState>{empty}</EmptyState>}</div>
+    </section>
+  );
+}
+
+function TaskRow({
+  action,
+  amount,
+  detail,
+  meta,
+  title,
+  tone,
+}: {
+  action: string;
+  amount?: string;
+  detail: string;
+  meta?: ReactNode;
+  title: string;
+  tone: "amber" | "red" | "green" | "blue";
+}) {
+  const styles = {
+    amber: "border-l-amber-400",
+    red: "border-l-red-500",
+    green: "border-l-emerald-500",
+    blue: "border-l-sky-500",
+  };
+
+  return (
+    <div className={`rounded-xl border border-slate-200 border-l-4 bg-white p-3 shadow-sm transition hover:bg-slate-50 ${styles[tone]}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="truncate text-sm font-semibold text-slate-950">{title}</h3>
+          <p className="mt-1 text-sm text-slate-600">{detail}</p>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            {meta}
+            <span className="text-xs font-medium text-slate-500">{action}</span>
+          </div>
+        </div>
+        {amount ? <strong className="shrink-0 text-sm tabular-nums text-slate-950">{amount}</strong> : null}
+      </div>
+    </div>
+  );
+}
+
+function SecondaryList({ children, title }: { children: ReactNode; title: string }) {
+  return (
+    <div>
+      <h3 className="text-sm font-semibold text-slate-800">{title}</h3>
+      <div className="mt-3 space-y-2">{children}</div>
+    </div>
+  );
+}
+
+function MiniRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-sm">
+      <span className="font-medium text-slate-700">{label}</span>
+      <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-slate-600 ring-1 ring-slate-200">{value}</span>
+    </div>
   );
 }
 
