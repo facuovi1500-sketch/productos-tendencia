@@ -1,5 +1,71 @@
 import { cn } from "@/lib/utils";
-import type { ReactNode } from "react";
+import type { ButtonHTMLAttributes, ReactNode } from "react";
+
+export type ButtonVariant = "primary" | "secondary" | "warning" | "danger" | "success" | "ghost";
+
+const buttonStyles: Record<ButtonVariant, string> = {
+  primary: "border-blue-700 bg-blue-700 text-white hover:bg-blue-800 focus-visible:ring-blue-300",
+  secondary: "border-slate-300 bg-white text-slate-800 hover:bg-slate-50 focus-visible:ring-slate-300",
+  warning: "border-amber-500 bg-amber-500 text-slate-950 hover:bg-amber-600 focus-visible:ring-amber-300",
+  danger: "border-red-700 bg-red-700 text-white hover:bg-red-800 focus-visible:ring-red-300",
+  success: "border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700 focus-visible:ring-emerald-300",
+  ghost: "border-transparent bg-transparent text-slate-700 hover:bg-slate-100 focus-visible:ring-slate-300",
+};
+
+export function buttonClassName(variant: ButtonVariant = "primary", className?: string) {
+  return cn(
+    "inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold shadow-sm transition focus-visible:outline-none focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-60",
+    buttonStyles[variant],
+    className,
+  );
+}
+
+export function Button({
+  children,
+  className,
+  type = "submit",
+  variant = "primary",
+  ...props
+}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: ButtonVariant }) {
+  return (
+    <button className={buttonClassName(variant, className)} type={type} {...props}>
+      {children}
+    </button>
+  );
+}
+
+export function ActionCard({
+  description,
+  href,
+  icon,
+  label,
+  variant = "primary",
+}: {
+  description: string;
+  href: string;
+  icon: ReactNode;
+  label: string;
+  variant?: ButtonVariant;
+}) {
+  const styles: Record<ButtonVariant, string> = {
+    primary: "border-blue-200 bg-blue-50 text-blue-950 hover:border-blue-300 hover:bg-blue-100",
+    secondary: "border-slate-200 bg-white text-slate-900 hover:border-slate-300 hover:bg-slate-50",
+    warning: "border-amber-200 bg-amber-50 text-amber-950 hover:border-amber-300 hover:bg-amber-100",
+    danger: "border-red-200 bg-red-50 text-red-950 hover:border-red-300 hover:bg-red-100",
+    success: "border-emerald-200 bg-emerald-50 text-emerald-950 hover:border-emerald-300 hover:bg-emerald-100",
+    ghost: "border-slate-200 bg-white text-slate-900 hover:bg-slate-50",
+  };
+
+  return (
+    <a className={cn("block rounded-xl border p-4 shadow-sm transition", styles[variant])} href={href}>
+      <div className="flex items-center gap-2 text-sm font-bold">
+        <span className="rounded-lg bg-white/80 p-2 shadow-sm ring-1 ring-black/5">{icon}</span>
+        {label}
+      </div>
+      <p className="mt-2 text-xs leading-5 opacity-80">{description}</p>
+    </a>
+  );
+}
 
 export function Card({ children, className }: { children: ReactNode; className?: string }) {
   return <section className={cn("rounded-xl border border-slate-200 bg-white p-5 shadow-sm ring-1 ring-slate-100/70", className)}>{children}</section>;

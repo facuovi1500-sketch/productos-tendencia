@@ -28,18 +28,18 @@ export function statusLabel(status: string) {
 }
 
 export function orderStatusTone(status: string): BadgeTone {
-  if (status === "CONSULTA") return "default";
+  if (status === "CONSULTA") return "amber";
   if (status === "SENADO") return "blue";
   if (status === "COMPRADO_PROVEEDOR") return "purple";
   if (status === "EN_TRANSITO") return "orange";
   if (status === "ENTREGADO") return "green";
   if (status === "CANCELADO") return "red";
-  return "amber";
+  return "default";
 }
 
 export function inquiryStatusTone(status: string): BadgeTone {
   if (status === "CONVERTIDA_PEDIDO") return "green";
-  if (status === "RESERVA_CON_SENA") return "blue";
+  if (status === "RESERVA_CON_SENA") return "green";
   if (status === "PERDIDA") return "softRed";
   if (status === "RESERVA_SIN_SENA") return "amber";
   return "default";

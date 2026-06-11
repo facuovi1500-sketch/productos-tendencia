@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { Button } from "@/components/ui";
 import { clientApi } from "@/lib/client-api";
 
 type ProductOption = {
@@ -68,9 +69,9 @@ export function ProductReorderForm({ products }: { products: ProductOption[] }) 
           Motivo de bloqueo
           <input className="mt-1 w-full rounded-md border border-border px-3 py-2" placeholder="Ej: muchas consultas sin seña, proveedor con reclamos" value={reason} onChange={(event) => setReason(event.target.value)} />
         </label>
-        <button className="self-end rounded-lg bg-red-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-red-800 disabled:opacity-60" disabled={isSaving || !productId}>
-          {isSaving ? "Guardando..." : "Guardar bloqueo"}
-        </button>
+        <Button className="self-end" disabled={isSaving || !productId} variant={doNotReorder ? "danger" : "success"}>
+          {isSaving ? "Guardando..." : doNotReorder ? "Guardar bloqueo" : "Guardar como OK"}
+        </Button>
       </div>
       <p className="mt-2 text-xs text-slate-500">Bloqueá recompra cuando no hay señas reales, hay reclamos o la ganancia todavía es teórica.</p>
       {message ? <p className="mt-2 text-sm text-slate-600">{message}</p> : null}

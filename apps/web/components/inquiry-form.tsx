@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { Button } from "@/components/ui";
 import { clientApi } from "@/lib/client-api";
 import { statusLabel } from "@/lib/labels";
 
@@ -180,9 +181,11 @@ export function InquiryForm({
             </>
           ) : null}
         </div>
-        <button className="mt-4 rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:opacity-60" disabled={isSaving || !productId}>
+        {status === "PERDIDA" ? <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800">Esta consulta se marca como pérdida. Cargá el motivo para aprender de la demanda no convertida.</p> : null}
+        {status === "RESERVA_CON_SENA" ? <p className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">Reserva con seña: cuenta como demanda validada.</p> : null}
+        <Button className="mt-4" disabled={isSaving || !productId} variant={status === "PERDIDA" ? "danger" : status === "RESERVA_CON_SENA" ? "success" : "primary"}>
           {isSaving ? "Guardando..." : "Guardar consulta"}
-        </button>
+        </Button>
       </form>
 
       <form className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-slate-100/70" onSubmit={submitEdit}>
@@ -209,9 +212,11 @@ export function InquiryForm({
             </>
           ) : null}
         </div>
-        <button className="mt-4 rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:opacity-60" disabled={isSaving || !editInquiryId}>
+        {editStatus === "PERDIDA" ? <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800">Vas a cerrar esta consulta como pérdida. Dejá el motivo cargado.</p> : null}
+        {editStatus === "RESERVA_CON_SENA" ? <p className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">Reserva con seña: seguimiento prioritario hasta cobrar saldo.</p> : null}
+        <Button className="mt-4" disabled={isSaving || !editInquiryId} variant={editStatus === "PERDIDA" ? "danger" : editStatus === "RESERVA_CON_SENA" ? "success" : "secondary"}>
           {isSaving ? "Guardando..." : "Guardar cambio"}
-        </button>
+        </Button>
         {message ? <p className="mt-2 text-sm text-slate-600">{message}</p> : null}
       </form>
     </div>

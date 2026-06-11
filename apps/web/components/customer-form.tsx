@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { Button } from "@/components/ui";
 import { clientApi } from "@/lib/client-api";
 
 type CustomerItem = {
@@ -54,9 +55,9 @@ function CreateCustomerForm() {
         <TextInput label="Teléfono / WhatsApp" value={phone} onChange={setPhone} placeholder="+54 9 ..." />
         <TextInput label="Ciudad" value={city} onChange={setCity} placeholder="Ej: Buenos Aires" />
       </div>
-      <button className="mt-4 rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:opacity-60" disabled={isSaving || !name.trim() || !phone.trim() || !city.trim()}>
+      <Button className="mt-4" disabled={isSaving || !name.trim() || !phone.trim() || !city.trim()} variant="primary">
         {isSaving ? "Guardando..." : "Guardar cliente"}
-      </button>
+      </Button>
       {message ? <p className="mt-2 text-sm text-slate-600">{message}</p> : null}
     </form>
   );
@@ -117,9 +118,9 @@ function EditCustomerForm({ customers }: { customers: CustomerItem[] }) {
         <TextInput label="Teléfono / WhatsApp" value={phone} onChange={setPhone} />
         <TextInput label="Ciudad" value={city} onChange={setCity} />
       </div>
-      <button className="mt-4 rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:opacity-60" disabled={isSaving || !customerId || !name.trim() || !phone.trim() || !city.trim()}>
+      <Button className="mt-4" disabled={isSaving || !customerId || !name.trim() || !phone.trim() || !city.trim()} variant="secondary">
         {isSaving ? "Guardando..." : "Guardar cambios"}
-      </button>
+      </Button>
       {message ? <p className="mt-2 text-sm text-slate-600">{message}</p> : null}
     </form>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { Button } from "@/components/ui";
 import { clientApi } from "@/lib/client-api";
 import { statusLabel } from "@/lib/labels";
 import { money } from "@/lib/utils";
@@ -113,9 +114,10 @@ function CreateOrderForm({ products, customers, providers }: { products: Option[
       {status === "SENADO" ? <p className="mt-2 text-xs text-slate-500">Pedido SEÑADO: ya hay seña, pero falta cobrar saldo antes de cerrar ganancia.</p> : null}
       {isInquiry ? <p className="mt-2 text-xs text-slate-500">CONSULTA no compromete plata: no cargues costo proveedor hasta confirmar compra.</p> : null}
       <FinancialPreview estimated={financials.estimated} realized={financials.realized} pending={financials.pending} />
-      <button className="mt-4 rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:opacity-60" disabled={isSaving || !productId || !customerId}>
+      {financials.pending > 0 ? <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">Hay saldo pendiente. Conviene cobrar antes de comprometer más plata.</p> : null}
+      <Button className="mt-4" disabled={isSaving || !productId || !customerId} variant="warning">
         {isSaving ? "Guardando..." : "Guardar pedido"}
-      </button>
+      </Button>
       {message ? <p className="mt-2 text-sm text-slate-600">{message}</p> : null}
     </form>
   );
@@ -200,9 +202,10 @@ function EditOrderForm({ orders, providers }: { orders: OrderItem[]; providers: 
       {status === "SENADO" ? <p className="mt-2 text-xs text-slate-500">SEÑADO significa que falta cobrar saldo para convertir ganancia teórica en caja.</p> : null}
       {isInquiry ? <p className="mt-2 text-xs text-slate-500">En CONSULTA no se compromete costo real ni compra al proveedor.</p> : null}
       <FinancialPreview estimated={financials.estimated} realized={financials.realized} pending={financials.pending} />
-      <button className="mt-4 rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:opacity-60" disabled={isSaving || !orderId}>
+      {financials.pending > 0 ? <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">Saldo pendiente visible: revisar cobro antes de cerrar el pedido.</p> : null}
+      <Button className="mt-4" disabled={isSaving || !orderId} variant="secondary">
         {isSaving ? "Guardando..." : "Guardar cambios"}
-      </button>
+      </Button>
       {message ? <p className="mt-2 text-sm text-slate-600">{message}</p> : null}
     </form>
   );

@@ -1,7 +1,5 @@
-import Link from "next/link";
-import type { ReactNode } from "react";
 import { AlertTriangle, Banknote, CircleDollarSign, ClipboardPlus, PackageSearch, PiggyBank, ShieldAlert, ShoppingCart, TrendingUp } from "lucide-react";
-import { Badge, Card, CardTitle, DataTable, PageHeader, StatCard } from "@/components/ui";
+import { ActionCard, Badge, Card, CardTitle, DataTable, PageHeader, StatCard } from "@/components/ui";
 import { CashSnapshotForm } from "@/components/cash-snapshot-form";
 import { demo, getApi } from "@/lib/api";
 import { orderStatusTone, statusLabel } from "@/lib/labels";
@@ -40,6 +38,11 @@ type ProductRankingRow = {
   profit: number;
   realizedProfit: number;
 };
+type TodayAction = {
+  label: string;
+  text: string;
+  tone: "risk" | "cash" | "balance" | "validation";
+};
 
 export default async function DashboardPage() {
   const data = await getApi<Dashboard>("/dashboard", demo.dashboard);
@@ -53,29 +56,27 @@ export default async function DashboardPage() {
       />
 
       <Card className="mb-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-col gap-4">
           <div>
             <CardTitle>Acciones rápidas</CardTitle>
             <p className="mt-1 text-sm text-slate-600">Cargá datos reales apenas pasan: consulta, pedido, caja o bloqueo de recompra.</p>
           </div>
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-            <QuickAction href="/inquiries" icon={<ClipboardPlus className="h-4 w-4" />} label="Nueva consulta" />
-            <QuickAction href="/orders" icon={<ShoppingCart className="h-4 w-4" />} label="Nuevo pedido" />
-            <QuickAction href="#cargar-caja" icon={<Banknote className="h-4 w-4" />} label="Actualizar caja" />
-            <QuickAction href="/products" icon={<PackageSearch className="h-4 w-4" />} label="Ver productos en prueba" />
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <ActionCard description="Registrá interés real antes de comprar." href="/inquiries" icon={<ClipboardPlus className="h-4 w-4" />} label="Nueva consulta" variant="primary" />
+            <ActionCard description="Cargá plata disponible hoy." href="#cargar-caja" icon={<Banknote className="h-4 w-4" />} label="Actualizar caja" variant="success" />
+            <ActionCard description="Usar solo con seña o venta confirmada." href="/orders" icon={<ShoppingCart className="h-4 w-4" />} label="Nuevo pedido" variant="warning" />
+            <ActionCard description="Revisá qué no conviene recomprar." href="/products" icon={<PackageSearch className="h-4 w-4" />} label="Productos en prueba" variant="danger" />
           </div>
         </div>
       </Card>
 
       <Card className="mb-6 border-sky-200 bg-sky-50/60">
         <CardTitle>Qué hacer hoy</CardTitle>
-        <ul className="mt-3 grid gap-2 text-sm text-slate-700 md:grid-cols-2">
+        <div className="mt-3 grid gap-3 text-sm text-slate-700 md:grid-cols-2 xl:grid-cols-4">
           {todayActions.map((action) => (
-            <li className="rounded-lg bg-white px-3 py-2 shadow-sm ring-1 ring-sky-100" key={action}>
-              {action}
-            </li>
+            <PriorityCard action={action} key={`${action.label}-${action.text}`} />
           ))}
-        </ul>
+        </div>
       </Card>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
@@ -162,25 +163,29 @@ export default async function DashboardPage() {
   );
 }
 
-function getTodayActions(data: Dashboard) {
-  const actions = [
-    "Actualizar caja al cierre del día.",
-    "No recomprar productos sin señas suficientes.",
+function getTodayActions(data: Dashboard): TodayAction[] {
+  const actions: TodayAction[] = [
+    { label: "Cierre diario", text: "Actualizar caja al cierre del día.", tone: "cash" },
+    { label: "Validación", text: "No recomprar productos sin señas suficientes.", tone: "validation" },
   ];
-  if (Number(data.netCashExposure) > 0) actions.unshift("Cobrar saldos pendientes antes de comprar más.");
-  if (data.atRiskOrders.length > 0) actions.unshift("Revisar pedidos en riesgo.");
-  if (data.reservationsWithoutDeposit > 0) actions.push("Convertir reservas sin seña o marcarlas como perdidas.");
+  if (Number(data.netCashExposure) > 0) actions.unshift({ label: "Antes de comprar", text: "Cobrar saldos pendientes antes de comprar más.", tone: "balance" });
+  if (data.atRiskOrders.length > 0) actions.unshift({ label: "Prioridad alta", text: "Revisar pedidos en riesgo.", tone: "risk" });
+  if (data.reservationsWithoutDeposit > 0) actions.push({ label: "Validación", text: "Convertir reservas sin seña o marcarlas como perdidas.", tone: "validation" });
   return actions.slice(0, 5);
 }
 
-function QuickAction({ href, icon, label }: { href: string; icon: ReactNode; label: string }) {
+function PriorityCard({ action }: { action: TodayAction }) {
+  const styles: Record<TodayAction["tone"], string> = {
+    risk: "border-red-200 bg-red-50 text-red-950",
+    cash: "border-emerald-200 bg-emerald-50 text-emerald-950",
+    balance: "border-amber-200 bg-amber-50 text-amber-950",
+    validation: "border-sky-200 bg-sky-50 text-sky-950",
+  };
+
   return (
-    <Link
-      className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-slate-950 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
-      href={href}
-    >
-      {icon}
-      {label}
-    </Link>
+    <div className={`rounded-xl border p-3 shadow-sm ${styles[action.tone]}`}>
+      <span className="inline-flex rounded-full bg-white/80 px-2 py-1 text-[11px] font-bold uppercase tracking-wide ring-1 ring-black/5">{action.label}</span>
+      <p className="mt-2 leading-5">{action.text}</p>
+    </div>
   );
 }

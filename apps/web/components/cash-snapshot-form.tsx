@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { Button } from "@/components/ui";
 import { clientApi } from "@/lib/client-api";
 
 export function CashSnapshotForm() {
@@ -57,9 +58,9 @@ export function CashSnapshotForm() {
             onChange={(event) => setNotes(event.target.value)}
           />
         </label>
-        <button className="self-end rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:opacity-60" disabled={isSaving}>
+        <Button className="self-end" disabled={isSaving} variant="success">
           {isSaving ? "Guardando..." : "Actualizar caja"}
-        </button>
+        </Button>
       </div>
       <p className="mt-2 text-xs text-slate-500">Caja disponible = plata real hoy. No se calcula desde ganancia teórica.</p>
       {message ? <p className="mt-2 text-sm text-slate-600">{message}</p> : null}
