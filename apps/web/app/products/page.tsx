@@ -1,4 +1,5 @@
 import { Badge, DataTable, PageHeader } from "@/components/ui";
+import { ProductCreateForm } from "@/components/product-create-form";
 import { ProductReorderForm } from "@/components/product-reorder-form";
 import { demo, getApi } from "@/lib/api";
 import { productStatusTone, statusLabel } from "@/lib/labels";
@@ -30,6 +31,7 @@ export default async function ProductsPage() {
         title="Catálogo maestro"
         description="Revisá qué productos seguir vendiendo, cuáles pausar y qué no recomprar todavía para proteger caja."
       />
+      <ProductCreateForm />
       <ProductReorderForm products={rows} />
       <DataTable<ProductRow>
         rows={rows}
