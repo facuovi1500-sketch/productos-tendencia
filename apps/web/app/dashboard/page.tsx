@@ -2,6 +2,7 @@ import { Banknote, ClipboardPlus, PackageSearch, PiggyBank, ShoppingCart } from 
 import type { ReactNode } from "react";
 import { Badge, CardTitle, DataTable } from "@/components/ui";
 import { CashSnapshotForm } from "@/components/cash-snapshot-form";
+import { OperationalAssistant } from "@/components/operational-assistant";
 import { demo, getApi } from "@/lib/api";
 import { inquiryStatusTone, orderStatusTone, statusLabel } from "@/lib/labels";
 import { money } from "@/lib/utils";
@@ -110,47 +111,17 @@ export default async function DashboardPage() {
         </div>
       </header>
 
-      <section className="rounded-3xl border border-slate-200 bg-slate-950 p-4 text-white shadow-xl shadow-slate-200/80">
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(360px,0.75fr)]">
-          <div>
-            <div className="flex items-center gap-3">
-              <span className="rounded-2xl bg-emerald-400/15 p-2.5 text-emerald-300 ring-1 ring-emerald-300/20">
-                <PiggyBank className="h-5 w-5" />
-              </span>
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-300">Caja real</p>
-                <h2 className="mt-1 text-sm font-medium text-slate-300">Plata disponible hoy para operar</h2>
-              </div>
-            </div>
-            <div className="mt-4 text-4xl font-bold tracking-tight sm:text-5xl">{money(data.cashAvailable)}</div>
-            <p className="mt-2 max-w-xl text-sm leading-5 text-slate-300">No uses ganancia teórica para decidir compras.</p>
-          </div>
+      <OperationalAssistant />
 
-          <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Plata</p>
-                <h3 className="mt-1 text-base font-semibold">Resumen de caja</h3>
-              </div>
-              <Badge tone={pendingCollections.length > 0 ? "amber" : "green"}>{pendingCollections.length} saldos</Badge>
-            </div>
-            <div className="mt-3 grid gap-2">
-              <MoneyLine label="Plata comprometida" value={money(data.committedCapital)} tone="amber" />
-              <MoneyLine label="Plata libre" value={money(data.freeCapital)} tone="green" />
-              <MoneyLine label="Falta cobrar" value={money(pendingTotal)} tone="amber" />
-              <MoneyLine label="Ganancia cobrada" value={money(data.realizedProfit)} tone="blue" />
-            </div>
-          </div>
-        </div>
-      </section>
+      <section className="grid gap-5 xl:grid-cols-[minmax(320px,0.78fr)_minmax(0,1.22fr)]">
+        <FinancePanel data={data} pendingCollections={pendingCollections.length} pendingTotal={pendingTotal} />
 
-      <section className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]">
         <DeskColumn
-          badge={`${pendingCollections.length + depositRequests.length + atRiskOrders.length + conversionActions.length} tareas`}
-          description="Orden de trabajo diario: cobrar, revisar riesgo y convertir consultas."
+          badge={`${pendingCollections.length + atRiskOrders.length + conversionActions.length} tareas`}
+          description="Primero cobros, riesgos y consultas con seña."
           title="Hoy primero"
         >
-          <WorkQueue title="Falta cobrar" description="Deuda real: pedidos con saldo pendiente." empty="No hay saldos pendientes.">
+          <WorkQueue title="Falta cobrar" description="Pedidos con saldo real pendiente." empty="No hay saldos pendientes.">
             {pendingCollections.map((row) => (
               <TaskRow
                 key={row.id ?? `${row.customerName}-${row.productName}`}
@@ -164,20 +135,7 @@ export default async function DashboardPage() {
             ))}
           </WorkQueue>
 
-          <WorkQueue title="Pedir seña" description="Interés o reserva sin seña. No es deuda real todavía." empty="No hay consultas pendientes de seña.">
-            {depositRequests.map((row) => (
-              <TaskRow
-                key={row.id ?? `${row.productName}-${row.customerName}`}
-                title={row.productName}
-                detail={`${row.customerName} · ${row.source}`}
-                meta={<Badge tone={inquiryStatusTone(row.status)}>{statusLabel(row.status)}</Badge>}
-                action="Pedir seña"
-                tone="blue"
-              />
-            ))}
-          </WorkQueue>
-
-          <WorkQueue title="Pedidos en riesgo" description="Resolver demoras, proveedor o exposición pendiente." empty="No hay pedidos en riesgo.">
+          <WorkQueue title="Pedidos en riesgo" description="Demoras, proveedor o exposición pendiente." empty="No hay pedidos en riesgo.">
             {atRiskOrders.map((row) => (
               <TaskRow
                 key={row.id ?? `${row.customerName}-${row.productName}`}
@@ -190,7 +148,7 @@ export default async function DashboardPage() {
             ))}
           </WorkQueue>
 
-          <WorkQueue title="Consultas para convertir" description="Reservas con seña para vincular o convertir a pedido." empty="No hay consultas para convertir.">
+          <WorkQueue title="Consultas para convertir" description="Reservas con seña listas para pedido." empty="No hay consultas para convertir.">
             {conversionActions.map((row) => (
               <TaskRow
                 key={row.id ?? `${row.productName}-${row.customerName}`}
@@ -198,7 +156,28 @@ export default async function DashboardPage() {
                 detail={`${row.customerName} · ${row.source}`}
                 meta={<Badge tone={inquiryStatusTone(row.status)}>{statusLabel(row.status)}</Badge>}
                 action={row.action}
-                tone={row.status === "RESERVA_CON_SENA" ? "green" : "blue"}
+                tone="green"
+              />
+            ))}
+          </WorkQueue>
+        </DeskColumn>
+      </section>
+
+      <section className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.9fr)]">
+        <DeskColumn
+          badge={`${depositRequests.length} consultas`}
+          description="Interés que necesita seña o cierre rápido."
+          title="Consultas y señas"
+        >
+          <WorkQueue title="Pedir seña" description="Interés o reserva sin seña. No es deuda real." empty="No hay consultas pendientes de seña.">
+            {depositRequests.map((row) => (
+              <TaskRow
+                key={row.id ?? `${row.productName}-${row.customerName}`}
+                title={row.productName}
+                detail={`${row.customerName} · ${row.source}`}
+                meta={<Badge tone={inquiryStatusTone(row.status)}>{statusLabel(row.status)}</Badge>}
+                action="Pedir seña"
+                tone="blue"
               />
             ))}
           </WorkQueue>
@@ -206,7 +185,7 @@ export default async function DashboardPage() {
 
         <DeskColumn
           badge={`${productsToPause.length + replenishmentCandidates.length} decisiones`}
-          description="Comprar solo cuando haya señas, entregas y caja suficiente."
+          description="Comprar solo con demanda validada y caja suficiente."
           title="Decisiones de compra"
         >
           <WorkQueue title="No comprar todavía" description="Productos sin validación suficiente o bloqueados." empty="No hay productos para pausar.">
@@ -288,6 +267,38 @@ function QuickButton({ href, icon, label, tone }: { href: string; icon: ReactNod
   );
 }
 
+function FinancePanel({ data, pendingCollections, pendingTotal }: { data: Dashboard; pendingCollections: number; pendingTotal: number }) {
+  return (
+    <section className="self-start rounded-3xl border border-slate-200 bg-slate-950 p-4 text-white shadow-panel">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <span className="rounded-2xl bg-emerald-400/15 p-2.5 text-emerald-300 ring-1 ring-emerald-300/20">
+            <PiggyBank className="h-5 w-5" />
+          </span>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-300">Caja real</p>
+            <h2 className="mt-1 text-sm font-medium text-slate-300">Plata disponible hoy</h2>
+          </div>
+        </div>
+        <Badge tone={pendingCollections > 0 ? "amber" : "green"}>{pendingCollections} saldos</Badge>
+      </div>
+
+      <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between xl:flex-col xl:items-start">
+        <div>
+          <div className="text-4xl font-bold tracking-tight">{money(data.cashAvailable)}</div>
+          <p className="mt-1 text-sm leading-5 text-slate-300">No uses ganancia teórica para decidir compras.</p>
+        </div>
+        <div className="grid w-full gap-2 sm:max-w-md sm:grid-cols-2 xl:max-w-none">
+          <MoneyLine label="Comprometida" value={money(data.committedCapital)} tone="amber" />
+          <MoneyLine label="Libre" value={money(data.freeCapital)} tone="green" />
+          <MoneyLine label="Falta cobrar" value={money(pendingTotal)} tone="amber" />
+          <MoneyLine label="Ganancia cobrada" value={money(data.realizedProfit)} tone="blue" />
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function MoneyLine({ label, tone, value }: { label: string; tone: "amber" | "green" | "blue"; value: string }) {
   const styles = {
     amber: "bg-amber-50 text-amber-900 ring-amber-100",
@@ -296,8 +307,8 @@ function MoneyLine({ label, tone, value }: { label: string; tone: "amber" | "gre
   };
 
   return (
-    <div className={`flex items-center justify-between rounded-xl px-3 py-3 ring-1 ${styles[tone]}`}>
-      <span className="text-sm font-medium">{label}</span>
+    <div className={`flex items-center justify-between rounded-xl px-3 py-2.5 ring-1 ${styles[tone]}`}>
+      <span className="text-xs font-semibold uppercase tracking-wide">{label}</span>
       <strong className="text-sm tabular-nums">{value}</strong>
     </div>
   );
@@ -305,8 +316,8 @@ function MoneyLine({ label, tone, value }: { label: string; tone: "amber" | "gre
 
 function DeskColumn({ badge, children, description, title }: { badge: string; children: ReactNode; description: string; title: string }) {
   return (
-    <section className="rounded-3xl border border-slate-200 bg-slate-50/70 p-4 shadow-sm ring-1 ring-slate-100">
-      <div className="mb-4 flex items-start justify-between gap-3">
+    <section className="rounded-3xl border border-slate-200 bg-slate-50/80 p-4 shadow-soft">
+      <div className="mb-3 flex items-start justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Mesa de trabajo</p>
           <h2 className="mt-1 text-xl font-semibold tracking-tight text-slate-950">{title}</h2>
@@ -314,7 +325,7 @@ function DeskColumn({ badge, children, description, title }: { badge: string; ch
         </div>
         <Badge tone="blue">{badge}</Badge>
       </div>
-      <div className="grid gap-4">{children}</div>
+      <div className="grid gap-3">{children}</div>
     </section>
   );
 }
@@ -322,15 +333,15 @@ function DeskColumn({ badge, children, description, title }: { badge: string; ch
 function WorkQueue({ children, description, empty, title }: { children: ReactNode; description: string; empty: string; title: string }) {
   const items = Array.isArray(children) ? children.filter(Boolean) : children ? [children] : [];
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="mb-4 flex items-start justify-between gap-3">
+    <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+      <div className="mb-3 flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-base font-semibold text-slate-950">{title}</h2>
-          <p className="mt-1 text-sm text-slate-600">{description}</p>
+          <h2 className="text-sm font-semibold text-slate-950">{title}</h2>
+          <p className="mt-0.5 text-xs leading-5 text-slate-600">{description}</p>
         </div>
         <Badge tone={items.length > 0 ? "blue" : "default"}>{items.length}</Badge>
       </div>
-      <div className="space-y-3">{items.length > 0 ? children : <EmptyState>{empty}</EmptyState>}</div>
+      <div className="space-y-2.5">{items.length > 0 ? children : <EmptyState>{empty}</EmptyState>}</div>
     </section>
   );
 }
@@ -358,7 +369,7 @@ function TaskRow({
   };
 
   return (
-    <div className={`rounded-xl border border-slate-200 border-l-4 bg-white p-3 shadow-sm transition hover:bg-slate-50 ${styles[tone]}`}>
+    <div className={`rounded-xl border border-slate-200 border-l-4 bg-white p-2.5 shadow-sm transition hover:bg-slate-50 ${styles[tone]}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="truncate text-sm font-semibold text-slate-950">{title}</h3>
@@ -393,7 +404,7 @@ function MiniRow({ label, value }: { label: string; value: string }) {
 }
 
 function EmptyState({ children }: { children: ReactNode }) {
-  return <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">{children}</div>;
+  return <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-sm text-slate-500">{children}</div>;
 }
 
 function getPendingCollections(orders: OrderRow[]): PendingCollectionRow[] {

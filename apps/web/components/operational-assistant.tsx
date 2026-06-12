@@ -96,75 +96,69 @@ export function OperationalAssistant() {
   }
 
   return (
-    <section className="mb-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-slate-100">
-      <div className="flex flex-col gap-1">
-        <h2 className="text-base font-semibold text-slate-950">Asistente operativo</h2>
-        <p className="text-sm text-slate-600">Escribí qué pasó y revisá la vista previa antes de guardar.</p>
-      </div>
-
-      <form className="mt-4" onSubmit={interpret}>
-        <label className="text-sm font-medium text-slate-700">
-          Operación
+    <section className="mb-5 rounded-2xl border border-slate-200 bg-white p-3 shadow-soft">
+      <form className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-end" onSubmit={interpret}>
+        <label className="block text-sm font-medium text-slate-700">
+          <span className="flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:gap-2">
+            <strong className="text-base text-slate-950">Asistente operativo</strong>
+            <span className="text-xs font-normal text-slate-500">Carga rápida con vista previa antes de guardar.</span>
+          </span>
           <textarea
-            className="mt-1 min-h-24 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm shadow-sm outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+            className="mt-2 min-h-[68px] w-full resize-y rounded-xl border border-slate-200 px-3 py-2 text-sm shadow-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
             placeholder="Ej: Lucas señó 10 camisetas premium, pagó 50000, falta cobrar saldo"
             value={text}
             onChange={(event) => setText(event.target.value)}
           />
         </label>
-        <div className="mt-3 flex flex-wrap items-center gap-3">
-          <Button disabled={isInterpreting || !text.trim()} variant="primary">
+        <div className="flex flex-wrap items-center gap-2 xl:justify-end">
+          <Button className="w-full sm:w-auto" disabled={isInterpreting || !text.trim()} variant="primary">
             {isInterpreting ? "Interpretando..." : "Interpretar"}
           </Button>
-          {message ? <p className="text-sm text-slate-600">{message}</p> : null}
+          {message ? <p className="w-full text-xs text-slate-600 xl:max-w-xs">{message}</p> : null}
         </div>
       </form>
 
       {preview ? (
-        <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+          <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <Badge tone={preview.canConfirm ? "green" : "amber"}>{intentLabels[preview.intent]}</Badge>
-              <h3 className="mt-3 text-base font-semibold text-slate-950">{preview.preview.title}</h3>
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge tone={preview.canConfirm ? "green" : "amber"}>{intentLabels[preview.intent]}</Badge>
+                <span className="text-xs font-semibold text-slate-500">Confianza {Math.round(preview.confidence * 100)}%</span>
+              </div>
+              <h3 className="mt-2 text-sm font-semibold text-slate-950">{preview.preview.title}</h3>
               <p className="mt-1 text-sm text-slate-600">{preview.preview.summary}</p>
             </div>
-            <span className="text-xs font-semibold text-slate-500">Confianza {Math.round(preview.confidence * 100)}%</span>
+            <div className="flex shrink-0 flex-wrap gap-2">
+              <Button disabled={!preview.canConfirm || isConfirming} type="button" variant="success" onClick={confirm}>
+                {isConfirming ? "Guardando..." : "Confirmar"}
+              </Button>
+              <Button type="button" variant="secondary" onClick={cancel}>
+                Cancelar
+              </Button>
+            </div>
           </div>
 
-          <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             {Object.entries(preview.preview.fields).map(([key, value]) => (
               <div className="rounded-lg bg-white px-3 py-2 text-sm ring-1 ring-slate-200" key={key}>
-                <span className="block text-xs font-semibold uppercase tracking-wide text-slate-400">{key}</span>
-                <strong className="mt-1 block text-slate-800">{value ?? "Falta confirmar"}</strong>
+                <span className="block text-[11px] font-semibold uppercase tracking-wide text-slate-400">{key}</span>
+                <strong className="mt-1 block truncate text-slate-800">{value ?? "Falta confirmar"}</strong>
               </div>
             ))}
           </div>
 
           {preview.preview.warnings.length > 0 ? (
-            <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-              <strong>Revisar antes de guardar:</strong>
-              <ul className="mt-1 list-inside list-disc">
-                {preview.preview.warnings.map((warning) => (
-                  <li key={warning}>{warning}</li>
-                ))}
-              </ul>
+            <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+              <strong>Revisar:</strong> {preview.preview.warnings.join(" ")}
             </div>
           ) : null}
 
           {preview.preview.missingFields.length > 0 ? (
-            <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+            <div className="mt-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800">
               Faltan datos: {preview.preview.missingFields.join(", ")}.
             </div>
           ) : null}
-
-          <div className="mt-4 flex flex-wrap gap-3">
-            <Button disabled={!preview.canConfirm || isConfirming} type="button" variant="success" onClick={confirm}>
-              {isConfirming ? "Guardando..." : "Confirmar y guardar"}
-            </Button>
-            <Button type="button" variant="secondary" onClick={cancel}>
-              Cancelar
-            </Button>
-          </div>
         </div>
       ) : null}
     </section>
