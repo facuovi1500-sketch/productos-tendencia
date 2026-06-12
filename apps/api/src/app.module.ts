@@ -13,6 +13,7 @@ import { ContentModule } from "./modules/content/content.module";
 import { MetricsModule } from "./modules/metrics/metrics.module";
 import { InquiriesModule } from "./modules/inquiries/inquiries.module";
 import { FinanceModule } from "./modules/finance/finance.module";
+import { AssistantModule } from "./modules/assistant/assistant.module";
 import { JwtAuthGuard } from "./auth/jwt-auth.guard";
 import { RolesGuard } from "./auth/roles.guard";
 import { HealthController } from "./health.controller";
@@ -32,6 +33,7 @@ import { HealthController } from "./health.controller";
     MetricsModule,
     InquiriesModule,
     FinanceModule,
+    AssistantModule,
   ],
   controllers: [HealthController],
   providers: [
