@@ -2,33 +2,38 @@ import { Injectable } from "@nestjs/common";
 import { OrderStatus } from "@prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
 import { toNumber } from "../../common/money";
+import { buildProductOperationalMetrics } from "../../common/product-operational-metrics";
 
 @Injectable()
 export class MetricsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getMetrics() {
-    const [products, deliveredOrders, allOrders, providerOffers, providers] = await Promise.all([
+    const [products, deliveredOrders, allOrders, inquiries, providerOffers, providers] = await Promise.all([
       this.prisma.product.findMany(),
       this.prisma.order.findMany({ where: { status: OrderStatus.ENTREGADO }, include: { product: true } }),
       this.prisma.order.findMany({ include: { product: true } }),
+      this.prisma.inquiry.findMany(),
       this.prisma.providerProduct.findMany({ include: { provider: true, product: true } }),
       this.prisma.provider.findMany(),
     ]);
 
+    const productDemand = buildProductOperationalMetrics({ products, orders: allOrders, inquiries });
+
     const productStats = products.map((product) => {
       const orders = allOrders.filter((order) => order.productId === product.id);
       const delivered = orders.filter((order) => order.status === OrderStatus.ENTREGADO);
+      const productInquiries = inquiries.filter((inquiry) => inquiry.productId === product.id);
       return {
         productId: product.id,
         productName: product.name,
         soldUnits: delivered.reduce((sum, order) => sum + order.quantity, 0),
-        inquiries: product.inquiries,
+        inquiries: productInquiries.length,
         deposits: orders.filter((order) => toNumber(order.deposit) > 0).length,
         realizedProfit: orders.reduce((sum, order) => sum + toNumber(order.realizedProfit), 0),
         shouldPause: product.doNotReorder,
         pauseReason: product.reorderBlockReason,
-        conversionRate: product.inquiries > 0 ? (delivered.length / product.inquiries) * 100 : 0,
+        conversionRate: productInquiries.length > 0 ? (delivered.length / productInquiries.length) * 100 : 0,
       };
     });
 
@@ -56,6 +61,7 @@ export class MetricsService {
       bestSellingProducts: productStats.sort((a, b) => b.soldUnits - a.soldUnits).slice(0, 5),
       mostConsultedProducts: [...productStats].sort((a, b) => b.inquiries - a.inquiries).slice(0, 5),
       productConversion: productStats.sort((a, b) => b.conversionRate - a.conversionRate),
+      productDemand,
       monthlyEstimatedProfit: Array.from(monthlyEstimatedProfit.entries()).map(([month, profit]) => ({ month, profit })),
       monthlyRealizedProfit: Array.from(monthlyRealizedProfit.entries()).map(([month, profit]) => ({ month, profit })),
       accumulatedProfit: deliveredOrders.reduce((sum, order) => sum + toNumber(order.estimatedProfit), 0),
